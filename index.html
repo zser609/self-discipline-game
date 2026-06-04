@@ -82,6 +82,15 @@
     <button class="btn btn-outline btn-sm" onclick="openMonitorModal('summary')">+ 数据总结</button>
   </div>
 </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h2>💾 数据备份</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">定期备份，防止清理浏览器后数据丢失</p>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary btn-sm" onclick="exportBackup()">📥 导出备份</button>
+      <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;">📤 恢复备份 <input type="file" accept=".json" onchange="importBackup(this)" style="display:none;"></label>
+    </div>
+  </div>
 </div>
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal-content"></div></div>
 <script>
@@ -170,6 +179,10 @@ function escAttr(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/"/g,'
 function showToast(t,m){const el=document.createElement('div');el.className='toast success';el.innerHTML='<div class="tt">'+t+'</div><div class="tm">'+m+'</div>';document.body.appendChild(el);setTimeout(()=>el.remove(),3000)}
 function init(){document.addEventListener("submit",function(e){e.preventDefault()});if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(()=>console.log('SW registered')).catch(()=>{})}document.querySelectorAll('.nav-btn').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');currentTab=btn.dataset.tab;document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));const tabEl=document.getElementById('tab-'+currentTab);if(tabEl)tabEl.classList.add('active');refreshAll()})});for(const t of DATA.tasks)t.completedToday=!!t.completedDates[TODAY];if(!DATA.categories||DATA.categories.length===0)DATA.categories=JSON.parse(JSON.stringify(DEFAULT_CATS));refreshAll();checkAchievements();requestNotifPerm();setInterval(checkReminders,30000);applyPenalties()}
 window.doCheckIn=doCheckIn;window.toggleTask=toggleTask;window.openTaskModal=openTaskModal;window.openGoalModal=openGoalModal;window.openPhaseModal=openPhaseModal;window.openMonitorModal=openMonitorModal;window.completePhase=completePhase;window.editPenalty=editPenalty;window.editFlexRules=editFlexRules;window.savePenalty=savePenalty;window.saveFlexRules=saveFlexRules;window.addCategory=addCategory;window.deleteCategory=deleteCategory;window.deleteTask=deleteTask;window.deleteGoal=deleteGoal;window.deletePhase=deletePhase;window.ackMonitor=ackMonitor;window.closeModal=closeModal;window.toggleCycleOpts=toggleCycleOpts;window.openSkillNodeModal=openSkillNodeModal;window.submitSkillNode=submitSkillNode;window.convertPhaseToSkill=convertPhaseToSkill;window.toggleSkillMastered=toggleSkillMastered;window.deleteSkillNode=deleteSkillNode;window.submitGoal=submitGoal;window.submitPhase=submitPhase;window.submitTask=submitTask;window.submitMonitor=submitMonitor;window.handleMonitorFile=handleMonitorFile;
+function exportBackup(){const blob=new Blob([JSON.stringify(DATA,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="discipline-realm-backup-"+new Date().toISOString().split("T")[0]+".json";a.click();URL.revokeObjectURL(url);showToast("✅ 备份已下载")}
+function importBackup(input){if(!input.files||!input.files[0])return;const reader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);if(!data.tasks||!data.signIns||data.points===undefined){showToast("❌ 无效的备份文件");return}if(!confirm("⚠️ 恢复备份将覆盖当前数据，确定继续？"))return;DATA=data;saveData();refreshAll();showToast("✅ 数据已恢复")}catch(err){showToast("❌ 文件解析失败")}};reader.readAsText(input.files[0]);input.value=""}
+window.exportBackup=exportBackup;window.importBackup=importBackup;
+
 init()
 </script>
 
