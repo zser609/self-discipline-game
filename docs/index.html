@@ -681,8 +681,8 @@ function refreshCalendar(){
     
     // XP display
     let xpStr='';
-    if(dayXP>0)xpStr='<span style="font-size:7px;line-height:1;color:var(--success)">+'+dayXP+'</span>';
-    else if(dayXP<0)xpStr='<span style="font-size:7px;line-height:1;color:var(--danger)">'+dayXP+'</span>';
+    if(dayXP>0)xpStr='<span style="font-size:7px;line-height:1;color:var(--danger)">+'+dayXP+'</span>';
+    else if(dayXP<0)xpStr='<span style="font-size:7px;line-height:1;color:var(--success)">'+dayXP+'</span>';
     
     let cls='cal-cell';
     if(isToday)cls+=' today';
@@ -748,20 +748,21 @@ function computeWeekStats(){
   const{monday,sunday}=getWeekBounds();
   return computePeriodStats(monday,sunday);
 }
-function computeMonthStats(){
-  const now=new Date();const start=new Date(now.getFullYear(),now.getMonth(),1);
-  const end=new Date(now.getFullYear(),now.getMonth()+1,0);
+function computeMonthStats(year,month){
+  if(year===undefined||month===undefined){const now=new Date();year=now.getFullYear();month=now.getMonth()}
+  const start=new Date(year,month,1);
+  const end=new Date(year,month+1,0);
   return computePeriodStats(start,end);
 }
 function renderDashboard(){
   const el=document.getElementById('dashboard-stats');
   if(!el)return;
   const ws=computeWeekStats();
-  const ms=computeMonthStats();
+  const ms=computeMonthStats(calendarYear,calendarMonth);
   // Month-over-month: compare to last month
-  const now=new Date();
-  const lmStart=new Date(now.getFullYear(),now.getMonth()-1,1);
-  const lmEnd=new Date(now.getFullYear(),now.getMonth(),0);
+  const cy=calendarYear||new Date().getFullYear();const cm=calendarMonth!==null&&calendarMonth!==undefined?calendarMonth:new Date().getMonth();
+  const lmStart=new Date(cy,cm-1,1);
+  const lmEnd=new Date(cy,cm,0);
   const lms=computePeriodStats(lmStart,lmEnd);
   const momDiff=ms.rate-lms.rate;
   const momArrow=momDiff>0?'↑':'↓';
