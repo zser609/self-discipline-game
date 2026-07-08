@@ -283,7 +283,7 @@ const ACHIEVEMENTS=[
 ];
 function getDefaultData(){return{signIns:{},points:0,tasks:[],goals:[],categories:JSON.parse(JSON.stringify(DEFAULT_CATS)),earnedAchievements:[],skillRoots:[]}}
 function loadData(){try{let d=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!d)d=getDefaultData();const def=getDefaultData();for(const k of Object.keys(def))if(!(k in d))d[k]=def[k];if(!d.categories||d.categories.length===0)d.categories=JSON.parse(JSON.stringify(DEFAULT_CATS));return d}catch(e){return getDefaultData()}}
-let _st=null;function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA));if(sb){clearTimeout(_st);_st=setTimeout(()=>{sb.from('user_data').upsert({id:1,data:DATA,updated_at:new Date().toISOString()}).then(({error})=>{if(!error)console.log('☁️ Synced')})},800)}}
+let _st=null;function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA));if(sb&&(DATA.tasks.length>0||Object.keys(DATA.signIns).length>0||DATA.points>0)){clearTimeout(_st);_st=setTimeout(()=>{sb.from('user_data').upsert({id:1,data:DATA,updated_at:new Date().toISOString()}).then(({error})=>{if(!error)console.log('☁️ Synced')})},800)}}
 let DATA=loadData();let currentTab='today';
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function getLevel(){let lv=1;while(DATA.points>=xpFor(lv+1))lv++;return lv}
