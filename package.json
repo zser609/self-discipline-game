@@ -1,16 +1,16 @@
 {
-  "name": "temp-vite",
-  "version": "0.0.0",
+  "name": "self-discipline-game",
   "private": true,
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node fix-build.cjs",
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^8.1.1",
-    "vite-plugin-singlefile": "^2.3.3"
+    "vite": "^8.1.3",
+    "vite-plugin-singlefile": "^2.2.0"
   },
   "sideEffects": true
 }
