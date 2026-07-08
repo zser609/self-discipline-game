@@ -634,7 +634,72 @@ function renderSkillNode(){return''}
 function updateDebugBar(){var ds=document.getElementById("db-skills");var dg=document.getElementById("db-goals");var dt=document.getElementById("db-tasks");var dp=document.getElementById("db-points");if(ds)ds.textContent=(DATA.skillRoots||[]).length;if(dg)dg.textContent=(DATA.goals||[]).length;if(dt)dt.textContent=(DATA.tasks||[]).length;if(dp)dp.textContent=DATA.points||0;}function refreshAll(){refreshTopBar();refreshToday();refreshCalendar();refreshDashboard();refreshSkillTree();refreshGoals();refreshMerit();refreshSettings();updateDebugBar()}
 function refreshTopBar(){const s=getStreak();const xp=getXpProgress();document.getElementById('streak-num').textContent=s;document.getElementById('pts-num').textContent=DATA.points;document.getElementById('lvl-num').textContent='Lv.'+xp.level;const xpRemain=xp.needed-xp.current;document.getElementById('xp-next').textContent=xp.pct>=100?'✨满级':'距Lv.'+(xp.level+1)+' '+xpRemain+'XP';const btn=document.getElementById('signin-btn');if(DATA.signIns[TODAY]){btn.textContent='✅ 已签到';btn.classList.add('done')}else{btn.textContent='✨ 签到';btn.classList.remove('done')}document.getElementById('xp-fill-top').style.width=xp.pct+'%';document.getElementById('xp-text-top').textContent='Lv.'+xp.level+' → Lv.'+(xp.level+1)+' ('+xp.current+'/'+xp.needed+' XP)'}
 function refreshToday(){applyPenalties();const container=document.getElementById('today-modules');const cats=DATA.categories||[];const allTasks=DATA.tasks.filter(t=>isTaskDueToday(t)&&t.type!=='monitor');const monitorTasks=DATA.tasks.filter(t=>t.type==='monitor');const totalDone=allTasks.filter(t=>t.completedToday).length;const totalAll=allTasks.length;document.getElementById('today-summary-text').textContent='已完成 '+totalDone+'/'+totalAll;if(cats.length===0){container.innerHTML='<div class="empty-state"><div class="icon">📂</div>请先在「设定任务」中添加分类</div>';return}let html='';for(const cat of cats){const catTasks=allTasks.filter(t=>t.categoryId===cat.id);const catMonitors=monitorTasks.filter(t=>t.categoryId===cat.id);if(catTasks.length===0&&catMonitors.length===0)continue;const catDone=catTasks.filter(t=>t.completedToday).length;const catTotal=catTasks.length;html+='<div class="cat-module" style="border-color:'+cat.color+'44;">';html+='<div class="cat-header" style="background:'+cat.color+'11;color:'+cat.color+';" onclick="this.parentElement.classList.toggle(\'collapsed\')">';html+='<span>'+escHtml(cat.icon)+' '+escHtml(cat.name)+'</span>';html+='<span class="cat-progress">'+catDone+'/'+catTotal+'</span>';html+='<span class="arrow">▼</span></div>';html+='<div class="cat-body">';for(const t of catTasks){const done=t.completedToday;const isNeg=t.type==='habit'&&t.category==='negative';let meta='';if(t.cycle==='weekly')meta='每周';else if(t.cycle==='custom')meta='每'+t.intervalDays+'天';else if(t.cycle==='deadline')meta='截止:'+t.deadlineDate;else meta='每日';if(isNeg)meta+=' · 需守住';let missInfo='';if(t.type==='flexible'){const m=t.consecutiveMisses||0;if(m>0)missInfo='<span class="miss-counter'+(m>=2?' danger':'')+'" style="margin-left:4px;">⚠ 连缺'+m+'次</span>'}let scoreHtml='';if(isNeg){scoreHtml='<span class="task-score pos">守住+'+t.reward+'</span><span class="task-score neg">破-'+t.penalty+'</span>'}else{scoreHtml='<span class="task-score pos">+'+t.reward+'</span>'}let parentInfo='';if(t.parentGoalId&&t.parentPhaseId){const goal=DATA.goals.find(g=>g.id===t.parentGoalId);if(goal){const ph=goal.phases.find(p=>p.id===t.parentPhaseId);if(ph)parentInfo=' <span style="font-size:10px;color:var(--text2);">· '+escHtml(goal.name)+' / '+escHtml(ph.name)+'</span>'}}const icon=isNeg?'🚫':'✅';const actLabel=done?'撤销':(isNeg?'守住了':'完成');const actCls=done?'btn-outline':(isNeg?'btn-success':'btn-success');html+='<div class="task-row'+(done?' done':'')+'" data-task-id="'+t.id+'"><span class="task-icon">'+icon+'</span><div class="task-info"><div class="task-name">'+escHtml(t.name)+parentInfo+'</div><div class="task-meta">'+meta+missInfo+'</div></div>'+scoreHtml+'<div class="task-act"><button class="btn '+actCls+' btn-xs" onclick="toggleTask(\''+t.id+'\')">'+actLabel+'</button></div></div>'}for(const m of catMonitors){const ack=m.lastAck===TODAY;const subLabel=m.subType==='reminder'?'🔔':'📊';html+='<div class="monitor-inline"><span>'+subLabel+'</span><span style="flex:1;">'+escHtml(m.name)+'</span>'+(m.url?'<a href="'+escHtml(m.url)+'" target="_blank">🔗</a>':'')+'<button class="btn btn-xs '+(ack?'btn-outline':'btn-primary')+'" onclick="ackMonitor(\''+m.id+'\')">'+(ack?'已查看':'去查看')+'</button></div>'}html+='</div></div>'}if(!html)html='<div class="empty-state"><div class="icon">🎉</div>今天没有待办任务</div>';container.innerHTML=html}
-function refreshCalendar(){const container=document.getElementById('calendar-heatmap');const now=new Date();const year=now.getFullYear();const month=now.getMonth();const firstDay=new Date(year,month,1).getDay();const daysInMonth=new Date(year,month+1,0).getDate();let html='<div class="cal-heat">';['日','一','二','三','四','五','六'].forEach(h=>html+='<div class="cal-cell header">'+h+'</div>');for(let i=0;i<firstDay;i++)html+='<div class="cal-cell empty"></div>';for(let d=1;d<=daysInMonth;d++){const ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');const isToday=ds===TODAY;let due=0,done=0;for(const t of DATA.tasks){if(t.type==='monitor'||t.type==='habit')continue;if(isTaskDueTodayOnDate(t,ds)){due++;if(t.completedDates[ds])done++}}let pctLevel=0;if(due>0){const r=done/due;if(r>=1)pctLevel=5;else if(r>=0.75)pctLevel=4;else if(r>=0.5)pctLevel=3;else if(r>=0.25)pctLevel=2;else pctLevel=1}if(DATA.signIns[ds]&&pctLevel===0)pctLevel=1;let cls='cal-cell';if(isToday)cls+=' today';html+='<div class="'+cls+'" data-pct="'+pctLevel+'" title="'+ds+': '+done+'/'+due+'">'+d+'</div>'}html+='</div>';container.innerHTML=html}
+function refreshCalendar(){
+  const container=document.getElementById('calendar-heatmap');
+  const now=new Date();
+  if(calendarYear===null){calendarYear=now.getFullYear();calendarMonth=now.getMonth()}
+  const year=calendarYear,month=calendarMonth;
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const monthLabel=year+'年'+(month+1)+'月';
+  const isCurrentMonth=year===now.getFullYear()&&month===now.getMonth();
+  
+  // Header with navigation
+  let html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:12px;">';
+  html+='<button class="cal-nav-btn" onclick="navigateMonth(-1)" title="上月">◀</button>';
+  html+='<span style="font-weight:700;font-size:13px;">'+monthLabel+'</span>';
+  html+='<button class="cal-nav-btn" onclick="navigateMonth(1)" title="下月"'+(isCurrentMonth?' disabled style="opacity:.3;cursor:default"':'')+'>▶</button>';
+  html+='</div>';
+  
+  html+='<div class="cal-heat">';
+  ['日','一','二','三','四','五','六'].forEach(h=>html+='<div class="cal-cell header">'+h+'</div>');
+  for(let i=0;i<firstDay;i++)html+='<div class="cal-cell empty"></div>';
+  
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isToday=ds===TODAY;
+    let due=0,done=0,dayXP=0;
+    for(const t of DATA.tasks){
+      if(t.type==='monitor')continue;
+      if(isTaskDueTodayOnDate(t,ds)){
+        due++;
+        if(t.completedDates[ds]){done++;dayXP+=t.reward||0}
+      }
+      // Count negative XP from habit tasks that failed on this day
+      if(t.type==='habit'&&t.lastPenaltyCheck===ds&&t.penaltyRules&&t.penaltyRules.pointPenalty){
+        // We approximate: if a penalty was applied on this day
+        if(!t.completedDates[ds]&&isTaskDueTodayOnDate(t,ds))dayXP-=(t.penaltyRules.pointPenalty||0);
+      }
+    }
+    let pctLevel=0;
+    if(due>0){const r=done/due;if(r>=1)pctLevel=5;else if(r>=0.75)pctLevel=4;else if(r>=0.5)pctLevel=3;else if(r>=0.25)pctLevel=2;else pctLevel=1}
+    if(DATA.signIns[ds]&&pctLevel===0)pctLevel=1;
+    
+    // Progress bar height
+    const barH=due>0?Math.round(done/due*100):0;
+    const barColor=barH>=100?'var(--primary2)':barH>=50?'var(--success)':barH>0?'var(--warning)':'transparent';
+    
+    // XP display
+    let xpStr='';
+    if(dayXP>0)xpStr='<span style="font-size:7px;line-height:1;color:var(--success)">+'+dayXP+'</span>';
+    else if(dayXP<0)xpStr='<span style="font-size:7px;line-height:1;color:var(--danger)">'+dayXP+'</span>';
+    
+    let cls='cal-cell';
+    if(isToday)cls+=' today';
+    html+='<div class="'+cls+'" data-pct="'+pctLevel+'" title="'+ds+': '+done+'/'+due+' XP:'+(dayXP||0)+'">';
+    html+='<div class="cal-bar" style="height:'+barH+'%;background:'+barColor+'"></div>';
+    html+='<div class="cal-content"><span class="cal-day">'+d+'</span>'+xpStr+'</div>';
+    html+='</div>';
+  }
+  html+='</div>';
+  container.innerHTML=html;
+}
+function navigateMonth(dir){
+  calendarMonth+=dir;
+  if(calendarMonth<0){calendarMonth=11;calendarYear--}
+  if(calendarMonth>11){calendarMonth=0;calendarYear++}
+  refreshCalendar();
+}
 
 function getWeekBounds(){
   const now=new Date();const day=now.getDay();const monday=new Date(now);monday.setDate(now.getDate()-(day===0?6:day-1));
@@ -759,7 +824,7 @@ function escHtml(s){if(!s)return'';const d=document.createElement('div');d.textC
 function escAttr(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function showToast(t,m){const el=document.createElement('div');el.className='toast success';el.innerHTML='<div class="tt">'+t+'</div><div class="tm">'+m+'</div>';document.body.appendChild(el);setTimeout(()=>el.remove(),3000)}
 function init(){syncFromCloud();document.addEventListener("submit",function(e){e.preventDefault()});if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(()=>console.log('SW registered')).catch(()=>{})}document.querySelectorAll('.nav-btn').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');currentTab=btn.dataset.tab;document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));const tabEl=document.getElementById('tab-'+currentTab);if(tabEl)tabEl.classList.add('active');refreshAll()})});for(const t of DATA.tasks)t.completedToday=!!t.completedDates[TODAY];if(!DATA.categories||DATA.categories.length===0)DATA.categories=JSON.parse(JSON.stringify(DEFAULT_CATS));refreshAll();checkAchievements();requestNotifPerm();setInterval(checkReminders,30000);applyPenalties()}
-window.doCheckIn=doCheckIn;window.toggleTask=toggleTask;window.openTaskModal=openTaskModal;window.openGoalModal=openGoalModal;window.openPhaseModal=openPhaseModal;window.openMonitorModal=openMonitorModal;window.completePhase=completePhase;window.editPenalty=editPenalty;window.editFlexRules=editFlexRules;window.savePenalty=savePenalty;window.saveFlexRules=saveFlexRules;window.addCategory=addCategory;window.deleteCategory=deleteCategory;window.deleteTask=deleteTask;window.deleteGoal=deleteGoal;window.deletePhase=deletePhase;window.ackMonitor=ackMonitor;window.closeModal=closeModal;window.toggleCycleOpts=toggleCycleOpts;window.openSkillNodeModal=openSkillNodeModal;window.submitSkillNode=submitSkillNode;window.convertPhaseToSkill=convertPhaseToSkill;window.toggleSkillMastered=toggleSkillMastered;window.deleteSkillNode=deleteSkillNode;window.submitGoal=submitGoal;window.submitPhase=submitPhase;window.submitTask=submitTask;window.submitMonitor=submitMonitor;window.handleMonitorFile=handleMonitorFile;
+window.doCheckIn=doCheckIn;window.toggleTask=toggleTask;window.openTaskModal=openTaskModal;window.openGoalModal=openGoalModal;window.openPhaseModal=openPhaseModal;window.openMonitorModal=openMonitorModal;window.completePhase=completePhase;window.editPenalty=editPenalty;window.editFlexRules=editFlexRules;window.savePenalty=savePenalty;window.saveFlexRules=saveFlexRules;window.addCategory=addCategory;window.deleteCategory=deleteCategory;window.deleteTask=deleteTask;window.deleteGoal=deleteGoal;window.deletePhase=deletePhase;window.ackMonitor=ackMonitor;window.closeModal=closeModal;window.toggleCycleOpts=toggleCycleOpts;window.openSkillNodeModal=openSkillNodeModal;window.submitSkillNode=submitSkillNode;window.convertPhaseToSkill=convertPhaseToSkill;window.toggleSkillMastered=toggleSkillMastered;window.deleteSkillNode=deleteSkillNode;window.submitGoal=submitGoal;window.submitPhase=submitPhase;window.submitTask=submitTask;window.submitMonitor=submitMonitor;window.handleMonitorFile=handleMonitorFile;window.navigateMonth=navigateMonth;
 function exportBackup(){const blob=new Blob([JSON.stringify(DATA,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="discipline-realm-backup-"+new Date().toISOString().split("T")[0]+".json";a.click();URL.revokeObjectURL(url);showToast("✅ 备份已下载")}
 function importBackup(input){if(!input.files||!input.files[0])return;const reader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);if(!data.tasks||!data.signIns||data.points===undefined){showToast("❌ 无效的备份文件");return}if(!confirm("⚠️ 恢复备份将覆盖当前数据，确定继续？"))return;DATA=data;saveData();refreshAll();showToast("✅ 数据已恢复")}catch(err){showToast("❌ 文件解析失败")}};reader.readAsText(input.files[0]);input.value=""}
 window.openEmojiPicker=openEmojiPicker;window.switchEmojiCat=switchEmojiCat;window.selectEmoji=selectEmoji;window.closeEmojiPicker=closeEmojiPicker;window.showSkillActionBar=showSkillActionBar;window.hideSkillActionBar=hideSkillActionBar;window.doSkillAction=doSkillAction;window.exportBackup=exportBackup;window.importBackup=importBackup;
