@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="z<div style="position:absolute;bottom:8px;right:8px;z-index:10;display:flex;gap:3px"><button class="btn btn-xs btn-outline" onclick="skillScale=Math.min(3,skillScale*1.2);if(typeof drawSkillGraph=='function')drawSkillGraph()" style="width:26px;height:26px;padding:0;border-radius:13px;font-size:14px;line-height:1;min-width:0">+</button><button class="btn btn-xs btn-outline" onclick="skillScale=Math.max(.3,skillScale*.8);if(typeof drawSkillGraph=='function')drawSkillGraph()" style="width:26px;height:26px;padding:0;border-radius:13px;font-size:14px;line-height:1;min-width:0">-</button><button class="btn btn-xs btn-outline" onclick="skillScale=1;if(typeof drawSkillGraph=='function')drawSkillGraph()" style="width:26px;height:26px;padding:0;border-radius:13px;font-size:10px;line-height:1;min-width:0">1:1</button></div>h-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -262,6 +262,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .emoji-picker-item{-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .emoji-picker-cat{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 #skill-canvas{touch-action:manipulation}
+
+.skill-zoom-btn{width:26px;height:26px;padding:0!important;border-radius:13px!important;font-size:14px;line-height:1;min-width:0!important}
 </style>
 </head>
 <body>
@@ -296,7 +298,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="card"><h2>📅 打卡热力图</h2><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">颜色深浅 = 当天任务完成率</div><div id="calendar-heatmap"></div></div>
 </div>
 <div class="tab-content" id="tab-skilltree">
-  <div class="card"><h2>🌳 我的技能树</h2><div style="font-size:12px;color:var(--text2);margin-bottom:12px;">每一个技能都来自你真实的坚持 · 点击节点操作</div><div style="position:relative"><div id="skill-tree-container" style="position:relative;min-height:460px;border-radius:var(--radius);overflow:hidden;background:var(--bg2)"></div><div style="position:absolute;bottom:8px;right:8px;display:flex;gap:4px;z-index:10"><button class="btn btn-xs btn-outline" onclick="skillScale=Math.min(3,skillScale*1.2);drawSkillGraph()" style="width:28px;height:28px;padding:0;border-radius:14px;font-size:16px;line-height:1">+</button><button class="btn btn-xs btn-outline" onclick="skillScale=Math.max(.3,skillScale*.8);drawSkillGraph()" style="width:28px;height:28px;padding:0;border-radius:14px;font-size:16px;line-height:1">−</button><button class="btn btn-xs btn-outline" onclick="skillScale=1;drawSkillGraph()" style="width:28px;height:28px;padding:0;border-radius:14px;font-size:11px;line-height:1">1:1</button></div></div><div class="skill-action-bar" id="skill-action-bar"><span class="skill-action-name" id="skill-action-name"></span><div class="skill-action-btns"><button class="btn btn-primary btn-xs" onclick="doSkillAction('add')">+ 添加分支</button><button class="btn btn-outline btn-xs" id="skill-action-master" onclick="doSkillAction('master')">✔ 标记掌握</button><button class="btn btn-danger btn-xs" onclick="doSkillAction('delete')">✖ 删除</button></div></div><div style="display:flex;gap:10px;margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="openSkillNodeModal(null)">+ 种下根技能</button><button class="btn btn-outline btn-sm" onclick="resetSkillGraph()">🔄 重置布局</button></div></div>
+  <div class="card"><h2>🌳 我的技能树</h2><div style="font-size:12px;color:var(--text2);margin-bottom:12px;">每一个技能都来自你真实的坚持 · 点击节点操作</div><div id="skill-tree-container" style="position:relative;min-height:460px;border-radius:var(--radius);overflow:hidden;background:var(--bg2)"></div><div class="skill-action-bar" id="skill-action-bar"><span class="skill-action-name" id="skill-action-name"></span><div class="skill-action-btns"><button class="btn btn-primary btn-xs" onclick="doSkillAction('add')">+ 添加分支</button><button class="btn btn-outline btn-xs" id="skill-action-master" onclick="doSkillAction('master')">✔ 标记掌握</button><button class="btn btn-danger btn-xs" onclick="doSkillAction('delete')">✖ 删除</button></div></div><div style="display:flex;gap:10px;margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="openSkillNodeModal(null)">+ 种下根技能</button><button class="btn btn-outline btn-sm" onclick="resetSkillGraph()">🔄 重置布局</button></div></div>
 </div>
 <div class="tab-content" id="tab-merit">
   <div class="card"><h2>🏆 成就徽章</h2><div class="ach-grid" id="merit-achievements"></div></div>
@@ -334,7 +336,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
   <div class="card" style="margin-top:12px;">
     <h2>💾 数据备份</h2>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">定期备份，防止清理浏览器后数据丢失</p>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary btn-sm" onclick="exportBackup()">📥 导出备份</button>
+      <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;">📤 恢复备份 <input type="file" accept=".json" onchange="importBackup(this)" style="display:none;"></label>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal-content"></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script></script>
+<script>
 const STORAGE_KEY='sdg_v3';
 const d=new Date();TODAY=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const SUPABASE_URL='https://bzlucslrylejrjachotw.supabase.co';const SUPABASE_KEY='sb_publishable_TiIhdz1pcjN-WBUspVn4yg_mZVU_DR5';let sb=null;try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){}function syncFromCloud(){if(!sb)return;sb.from('user_data').select('data').eq('id',1).single().then(({data:row,error})=>{if(error||!row||!row.data)return;const cd=row.data;if(!cd.points&&cd.points!==0)return;if(cd.points>DATA.points||Object.keys(cd.signIns||{}).length>Object.keys(DATA.signIns||{}).length){DATA=cd;saveData();refreshAll();showToast('☁️ 已从云端同步数据')}}).catch(()=>{})}
@@ -391,7 +403,7 @@ function toggleSkillMastered(id){const node=findSkillNode(id);if(!node)return;no
 function deleteSkillNode(id){const node=findSkillNode(id);if(!node)return;const hasChildren=(node.children||[]).length>0;const msg=hasChildren?'确定删除「'+node.name+'」及其所有分支吗？':'确定删除「'+node.name+'」吗？';if(!confirm(msg))return;const parent=findParentNode(id);if(parent)parent.children=(parent.children||[]).filter(c=>c.id!==id);else DATA.skillRoots=(DATA.skillRoots||[]).filter(n=>n.id!==id);saveData();refreshAll()}
 
 // ===== Skill Tree Force-Directed Graph =====
-let skillGNodes=[],skillGEdges=[],skillCanvas=null,skillCtx=null,skillAnim=null,skillDragNode=null,skillHoverNode=null,skillScale=1,skillPinchDist=0,skillPinchMidX=0,skillPinchMidY=0;
+let skillGNodes=[],skillGEdges=[],skillCanvas=null,skillCtx=null,skillAnim=null,skillDragNode=null,skillHoverNode=null,skillScale=1,skillPinchDist=0,skillPinchMX=0,skillPinchMY=0;
 function flattenSkillNodes(nodes,parentId,depth){
   const r={nodes:[],edges:[]};
   for(const n of nodes){
@@ -492,7 +504,7 @@ function drawSkillGraph(){
     ctx.font='bold '+(isHover?11:10)+'px sans-serif';ctx.fillStyle=isHover?'#fff':'rgba(255,255,255,.7)';ctx.fillText(n.name,n.x,n.y+r+12);
     if(n.mastered){ctx.font='9px sans-serif';ctx.fillStyle='#5ce0b8';ctx.fillText('✔',n.x+r-8,n.y-r+8)}
   });
-ctx.restore()}
+  ctx.restore();}
 function setupSkillCanvasEvents(){
   if(!skillCanvas)return;
   skillCanvas.onmousedown=function(e){
@@ -518,7 +530,7 @@ function setupSkillCanvasEvents(){
   skillCanvas.onmouseleave=function(){skillDragNode=null;skillHoverNode=null;skillCanvas.style.cursor='default';drawSkillGraph()};
   let skillTouchMoved=false,skillTouchStartTime=0,skillTouchStartX=0,skillTouchStartY=0;
   skillCanvas.ontouchstart=function(e){
-    if(e.touches.length===2){e.preventDefault();const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;skillPinchDist=Math.sqrt(dx*dx+dy*dy);skillPinchMidX=(e.touches[0].clientX+e.touches[1].clientX)/2;skillPinchMidY=(e.touches[0].clientY+e.touches[1].clientY)/2;return}
+    if(e.touches.length===2){skillPinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);skillPinchMX=(e.touches[0].clientX+e.touches[1].clientX)/2;skillPinchMY=(e.touches[0].clientY+e.touches[1].clientY)/2;return}
     if(e.touches.length!==1)return;
     skillTouchMoved=false;skillTouchStartTime=Date.now();
     const rect=skillCanvas.getBoundingClientRect();
@@ -533,7 +545,7 @@ function setupSkillCanvasEvents(){
     drawSkillGraph();
   };
   skillCanvas.ontouchmove=function(e){
-    if(e.touches.length===2&&skillPinchDist>0){e.preventDefault();const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const dist=Math.sqrt(dx*dx+dy*dy);const scale=dist/skillPinchDist;skillScale=Math.max(.3,Math.min(3,skillScale*scale));skillPinchDist=dist;drawSkillGraph();return}
+    if(e.touches.length===2&&skillPinchDist>0){e.preventDefault();const nd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);skillScale=Math.max(.3,Math.min(3,skillScale*nd/skillPinchDist));skillPinchDist=nd;drawSkillGraph();return}
     if(!skillHoverNode)return;
     if(e.touches.length!==1)return;
     const rect=skillCanvas.getBoundingClientRect();
@@ -544,7 +556,6 @@ function setupSkillCanvasEvents(){
     if(skillDragNode){e.preventDefault();skillDragNode.x=mx;skillDragNode.y=my;skillDragNode.vx=0;skillDragNode.vy=0;drawSkillGraph()}
   };
   skillCanvas.ontouchend=function(){
-    if(e&&e.touches&&e.touches.length===0){skillPinchDist=0}
     if(skillDragNode){skillDragNode=null;drawSkillGraph();return}
     const dt=Date.now()-skillTouchStartTime;
     if(skillHoverNode&&!skillTouchMoved&&dt<500){showSkillActionBar(skillHoverNode)}
@@ -640,10 +651,6 @@ function init(){syncFromCloud();document.addEventListener("submit",function(e){e
 window.doCheckIn=doCheckIn;window.toggleTask=toggleTask;window.openTaskModal=openTaskModal;window.openGoalModal=openGoalModal;window.openPhaseModal=openPhaseModal;window.openMonitorModal=openMonitorModal;window.completePhase=completePhase;window.editPenalty=editPenalty;window.editFlexRules=editFlexRules;window.savePenalty=savePenalty;window.saveFlexRules=saveFlexRules;window.addCategory=addCategory;window.deleteCategory=deleteCategory;window.deleteTask=deleteTask;window.deleteGoal=deleteGoal;window.deletePhase=deletePhase;window.ackMonitor=ackMonitor;window.closeModal=closeModal;window.toggleCycleOpts=toggleCycleOpts;window.openSkillNodeModal=openSkillNodeModal;window.submitSkillNode=submitSkillNode;window.convertPhaseToSkill=convertPhaseToSkill;window.toggleSkillMastered=toggleSkillMastered;window.deleteSkillNode=deleteSkillNode;window.submitGoal=submitGoal;window.submitPhase=submitPhase;window.submitTask=submitTask;window.submitMonitor=submitMonitor;window.handleMonitorFile=handleMonitorFile;
 function exportBackup(){const blob=new Blob([JSON.stringify(DATA,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="discipline-realm-backup-"+new Date().toISOString().split("T")[0]+".json";a.click();URL.revokeObjectURL(url);showToast("✅ 备份已下载")}
 function importBackup(input){if(!input.files||!input.files[0])return;const reader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);if(!data.tasks||!data.signIns||data.points===undefined){showToast("❌ 无效的备份文件");return}if(!confirm("⚠️ 恢复备份将覆盖当前数据，确定继续？"))return;DATA=data;saveData();refreshAll();showToast("✅ 数据已恢复")}catch(err){showToast("❌ 文件解析失败")}};reader.readAsText(input.files[0]);input.value=""}
-window.openEmojiPicker=openEmojiPicker;window.switchEmojiCat=switchEmojiCat;window.selectEmoji=selectEmoji;window.closeEmojiPicker=closeEmojiPicker;window.showSkillActionBar=showSkillActionBar;window.hideSkillActionBar=hideSkillActionBar;window.doSkillAction=doSkillAction;window.exportBackup=exportBackup;window.importBackup=importBackup;
-
-init()
-eader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);if(!data.tasks||!data.signIns||data.points===undefined){showToast("❌ 无效的备份文件");return}if(!confirm("⚠️ 恢复备份将覆盖当前数据，确定继续？"))return;DATA=data;saveData();refreshAll();showToast("✅ 数据已恢复")}catch(err){showToast("❌ 文件解析失败")}};reader.readAsText(input.files[0]);input.value=""}
 window.openEmojiPicker=openEmojiPicker;window.switchEmojiCat=switchEmojiCat;window.selectEmoji=selectEmoji;window.closeEmojiPicker=closeEmojiPicker;window.showSkillActionBar=showSkillActionBar;window.hideSkillActionBar=hideSkillActionBar;window.doSkillAction=doSkillAction;window.exportBackup=exportBackup;window.importBackup=importBackup;
 
 init()
