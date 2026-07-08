@@ -525,13 +525,14 @@ function setupSkillCanvasEvents(){
   };
   skillCanvas.onmouseup=function(){if(skillDragNode){skillDragNode=null;drawSkillGraph()}};
   skillCanvas.onmouseleave=function(){skillDragNode=null;skillHoverNode=null;skillCanvas.style.cursor='default';drawSkillGraph()};
-  let skillTouchMoved=false,skillTouchStartTime=0;
+  let skillTouchMoved=false,skillTouchStartTime=0,skillTouchStartX=0,skillTouchStartY=0;
   skillCanvas.ontouchstart=function(e){
     if(e.touches.length!==1)return;
     skillTouchMoved=false;skillTouchStartTime=Date.now();
     const rect=skillCanvas.getBoundingClientRect();
     const sx=skillCanvas.width/rect.width,sy=skillCanvas.height/rect.height;
     const mx=(e.touches[0].clientX-rect.left)*sx,my=(e.touches[0].clientY-rect.top)*sy;
+    skillTouchStartX=mx;skillTouchStartY=my;
     skillHoverNode=null;skillDragNode=null;
     for(let i=skillGNodes.length-1;i>=0;i--){
       const n=skillGNodes[i],dx=mx-n.x,dy=my-n.y;
@@ -545,7 +546,7 @@ function setupSkillCanvasEvents(){
     const rect=skillCanvas.getBoundingClientRect();
     const sx=skillCanvas.width/rect.width,sy=skillCanvas.height/rect.height;
     const mx=(e.touches[0].clientX-rect.left)*sx,my=(e.touches[0].clientY-rect.top)*sy;
-    const dx=mx-skillHoverNode.x,dy=my-skillHoverNode.y;
+    const dx=mx-skillTouchStartX,dy=my-skillTouchStartY;
     if(Math.abs(dx)>5||Math.abs(dy)>5){skillTouchMoved=true;skillDragNode=skillHoverNode}
     if(skillDragNode){e.preventDefault();skillDragNode.x=mx;skillDragNode.y=my;skillDragNode.vx=0;skillDragNode.vy=0;drawSkillGraph()}
   };
