@@ -286,7 +286,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="card"><h2>📅 打卡热力图</h2><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">颜色深浅 = 当天任务完成率</div><div id="calendar-heatmap"></div></div>
 </div>
 <div class="tab-content" id="tab-skilltree">
-  <div class="card"><h2>🌳 我的技能树</h2><div style="font-size:12px;color:var(--text2);margin-bottom:12px;">每一个技能都来自你真实的坚持 · 点击节点操作</div><div id="skill-tree-container"></div><button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="openSkillNodeModal(null)">+ 种下根技能</button></div>
+  <div class="card"><h2>🌳 我的技能树</h2><div style="font-size:12px;color:var(--text2);margin-bottom:12px;">每一个技能都来自你真实的坚持 · 点击节点操作</div><div id="skill-tree-container" style="position:relative;min-height:460px;border-radius:var(--radius);overflow:hidden;background:var(--bg2)"></div><div style="display:flex;gap:10px;margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="openSkillNodeModal(null)">+ 种下根技能</button><button class="btn btn-outline btn-sm" onclick="resetSkillGraph()">🔄 重置布局</button></div></div>
 </div>
 <div class="tab-content" id="tab-merit">
   <div class="card"><h2>🏆 成就徽章</h2><div class="ach-grid" id="merit-achievements"></div></div>
@@ -382,8 +382,180 @@ function submitSkillNode(event,parentId){event.preventDefault();const node={id:u
 function convertPhaseToSkill(goalId,phaseId){const goal=DATA.goals.find(g=>g.id===goalId);if(!goal)return;const phase=goal.phases.find(p=>p.id===phaseId);if(!phase||!phase.completed)return;if(!confirm('将阶段「'+phase.name+'」转化为技能节点吗？'))return;DATA.skillRoots.push({id:uid(),name:phase.name,icon:phase.reward?'🎯':'⭐',source:'来自长期目标「'+goal.name+'」',mastered:true,children:[],createdAt:TODAY,goalId,phaseId});saveData();refreshAll();showToast('🌳 已种入技能树','「'+phase.name+'」已添加为根技能')}
 function toggleSkillMastered(id){const node=findSkillNode(id);if(!node)return;node.mastered=!node.mastered;saveData();refreshAll()}
 function deleteSkillNode(id){const node=findSkillNode(id);if(!node)return;const hasChildren=(node.children||[]).length>0;const msg=hasChildren?'确定删除「'+node.name+'」及其所有分支吗？':'确定删除「'+node.name+'」吗？';if(!confirm(msg))return;const parent=findParentNode(id);if(parent)parent.children=(parent.children||[]).filter(c=>c.id!==id);else DATA.skillRoots=(DATA.skillRoots||[]).filter(n=>n.id!==id);saveData();refreshAll()}
-function renderSkillNode(node,isRoot){const mastered=node.mastered;let html='<div class="tree-node-wrapper'+(isRoot?' root':'')+'">';html+='<div class="tree-connector"></div>';html+='<div class="tree-node-card'+(mastered?' mastered':'')+'" onclick="event.stopPropagation();">';html+='<div class="node-icon">'+escHtml(node.icon)+'</div>';html+='<div class="node-body"><div class="node-name">'+escHtml(node.name)+'</div>';if(node.source)html+='<div class="node-source">'+escHtml(node.source)+'</div>';html+='</div>';if(mastered)html+='<div class="node-mastered-badge">✅</div>';html+='<div class="node-actions">';html+='<button class="btn btn-xs btn-outline" onclick="event.stopPropagation();openSkillNodeModal(\''+node.id+'\')" title="添加分支">+</button>';html+='<button class="btn btn-xs btn-outline" onclick="event.stopPropagation();toggleSkillMastered(\''+node.id+'\')" title="'+(mastered?'取消掌握':'标记掌握')+'">'+(mastered?'🔄':'✔')+'</button>';html+='<button class="btn btn-xs btn-danger" onclick="event.stopPropagation();deleteSkillNode(\''+node.id+'\')" title="删除">✖</button>';html+='</div></div>';if(node.children&&node.children.length>0){html+='<div class="tree-node-children">'+node.children.map(c=>renderSkillNode(c,false)).join('')+'</div>'}html+='</div>';return html}
-function refreshSkillTree(){const container=document.getElementById('skill-tree-container');if(!DATA.skillRoots||DATA.skillRoots.length===0){container.innerHTML='<div class="empty-state"><div class="icon">🌱</div>还没有技能，点击下方按钮种下第一个根技能</div>';return}container.innerHTML='<div class="tree-container">'+DATA.skillRoots.map(r=>renderSkillNode(r,true)).join('')+'</div>';if(typeof gsap!=='undefined'){const nodes=container.querySelectorAll('.tree-node-card');const connectors=container.querySelectorAll('.tree-connector');gsap.set(nodes,{opacity:0,y:30,scale:.9});gsap.set(connectors,{scaleY:0,transformOrigin:'top center'});gsap.to(connectors,{scaleY:1,duration:.4,stagger:.08,ease:'power2.out'});gsap.to(nodes,{opacity:1,y:0,scale:1,duration:.5,stagger:.1,ease:'back.out(1.4)',onComplete:()=>{nodes.forEach(n=>{if(n.classList.contains('mastered')){gsap.to(n,{boxShadow:'0 0 20px rgba(92,224,184,.3)',duration:1.5,repeat:-1,yoyo:true,ease:'sine.inOut'})}})}});const masteredNodes=container.querySelectorAll('.tree-node-card.mastered');masteredNodes.forEach(n=>{gsap.to(n,{borderColor:'rgba(92,224,184,.5)',duration:2,repeat:-1,yoyo:true,ease:'sine.inOut'})});nodes.forEach(n=>{n.addEventListener('mouseenter',()=>{gsap.to(n,{scale:1.04,y:-4,boxShadow:'0 12px 40px rgba(124,92,252,.2)',duration:.25,ease:'power2.out'})});n.addEventListener('mouseleave',()=>{const mastered=n.classList.contains('mastered');gsap.to(n,{scale:1,y:0,boxShadow:mastered?'0 0 20px rgba(92,224,184,.3)':'0 4px 30px rgba(0,0,0,.5)',duration:.25,ease:'power2.out'})})})}}
+
+// ===== Skill Tree Force-Directed Graph =====
+let skillGNodes=[],skillGEdges=[],skillCanvas=null,skillCtx=null,skillAnim=null,skillDragNode=null,skillHoverNode=null;
+function flattenSkillNodes(nodes,parentId,depth){
+  const r={nodes:[],edges:[]};
+  for(const n of nodes){
+    r.nodes.push({id:n.id,name:n.name,icon:n.icon,mastered:n.mastered,source:n.source||'',depth,x:Math.random()*300+100,y:Math.random()*250+80,vx:0,vy:0,radius:depth===0?30:24});
+    r.edges.push({from:parentId,to:n.id});
+    const child=flattenSkillNodes(n.children||[],n.id,depth+1);
+    r.nodes.push(...child.nodes);r.edges.push(...child.edges);
+  }
+  return r;
+}
+function initSkillGraph(){
+  const container=document.getElementById('skill-tree-container');
+  if(!container)return;
+  container.innerHTML='';
+  const canvas=document.createElement('canvas');
+  canvas.style.width='100%';canvas.style.height='100%';canvas.style.position='absolute';canvas.style.top='0';canvas.style.left='0';
+  skillCanvas=canvas;skillCtx=canvas.getContext('2d');
+  container.appendChild(canvas);
+  const rect=container.getBoundingClientRect();
+  const w=Math.max(300,rect.width||300);
+  skillCanvas.width=w*2;skillCanvas.height=460*2;
+  skillCanvas.style.width=w+'px';skillCanvas.style.height='460px';
+  const flat=flattenSkillNodes(DATA.skillRoots||[],null,0);
+  skillGNodes=flat.nodes;skillGEdges=flat.edges;
+  if(skillGNodes.length===0){container.innerHTML='<div class="empty-state"><div class="icon">🌱</div>还没有技能，点击下方按钮种下第一个根技能</div>';skillCanvas=null;return}
+  const cx=w,cY=460;
+  const roots=skillGNodes.filter(n=>n.depth===0);
+  roots.forEach((n,i)=>{const a=2*Math.PI*i/Math.max(1,roots.length);n.x=cx+Math.cos(a)*70;n.y=cY+Math.sin(a)*70});
+  startSkillSim();setupSkillCanvasEvents();
+}
+function startSkillSim(){
+  let iter=0;
+  function tick(){
+    if(!skillCanvas){skillAnim=null;return}
+    const w=skillCanvas.width,h=skillCanvas.height;
+    for(let i=0;i<skillGNodes.length;i++){
+      const a=skillGNodes[i];
+      let fx=0,fy=0;
+      for(let j=0;j<skillGNodes.length;j++){
+        if(i===j)continue;
+        const b=skillGNodes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.max(5,Math.sqrt(dx*dx+dy*dy)),f=2400/(d*d);
+        fx+=(dx/d)*f;fy+=(dy/d)*f;
+      }
+      fx+=(w/2-a.x)*0.002;fy+=(h/2-a.y)*0.002;
+      skillGEdges.filter(e=>e.from===a.id||e.to===a.id).forEach(e=>{
+        const oId=e.from===a.id?e.to:e.from;
+        const b=skillGNodes.find(n=>n.id===oId);
+        if(b){const dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy),ideal=100+a.depth*70;fx+=(dx/d)*(d-ideal)*0.008;fy+=(dy/d)*(d-ideal)*0.008}
+      });
+      a.vx=(a.vx+fx)*0.82;a.vy=(a.vy+fy)*0.82;
+      a.x+=a.vx;a.y+=a.vy;
+      const pad=a.radius+8;a.x=Math.max(pad,Math.min(w-pad,a.x));a.y=Math.max(pad,Math.min(h-pad,a.y));
+    }
+    iter++;
+    drawSkillGraph();
+    if(iter<100||skillDragNode){skillAnim=requestAnimationFrame(tick)}else{skillAnim=null;drawSkillGraph()}
+    if(iter>400){skillAnim=null;drawSkillGraph()}
+  }
+  skillAnim=requestAnimationFrame(tick);
+}
+function drawSkillGraph(){
+  if(!skillCtx||!skillCanvas)return;
+  const ctx=skillCtx,w=skillCanvas.width,h=skillCanvas.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='rgba(255,255,255,.01)';ctx.fillRect(0,0,w,h);
+  // Edges
+  skillGEdges.forEach(e=>{
+    const a=skillGNodes.find(n=>n.id===e.from),b=skillGNodes.find(n=>n.id===e.to);
+    if(!a||!b)return;
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2-20;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.quadraticCurveTo(mx,my,b.x,b.y);
+    const hl=skillHoverNode&&(e.from===skillHoverNode.id||e.to===skillHoverNode.id);
+    ctx.strokeStyle=hl?'rgba(92,224,184,.45)':'rgba(255,255,255,.06)';
+    ctx.lineWidth=hl?1.8:0.8;ctx.stroke();
+  });
+  // Nodes
+  skillGNodes.forEach(n=>{
+    const isHover=skillHoverNode&&skillHoverNode.id===n.id;
+    const isDrag=skillDragNode&&skillDragNode.id===n.id;
+    const isConn=skillHoverNode&&!isHover&&skillGEdges.some(e=>(e.from===skillHoverNode.id&&e.to===n.id)||(e.to===skillHoverNode.id&&e.from===n.id));
+    const r=n.radius+(isHover?4:0)+(isDrag?3:0);
+    if(n.mastered){ctx.shadowColor='rgba(92,224,184,.5)';ctx.shadowBlur=16}
+    else if(isHover||isDrag){ctx.shadowColor='rgba(124,92,252,.5)';ctx.shadowBlur=14}
+    else if(isConn){ctx.shadowColor='rgba(92,224,184,.25)';ctx.shadowBlur=8}
+    else{ctx.shadowColor='transparent';ctx.shadowBlur=0}
+    const grad=ctx.createRadialGradient(n.x-r*.3,n.y-r*.3,0,n.x,n.y,r);
+    if(n.mastered){grad.addColorStop(0,'#34d399');grad.addColorStop(1,'#0d4d33')}
+    else if(isHover||isDrag){grad.addColorStop(0,'#9b7cfc');grad.addColorStop(1,'#3d1d8c')}
+    else if(n.depth===0){grad.addColorStop(0,'#7c5cfc');grad.addColorStop(1,'#1d1060')}
+    else{grad.addColorStop(0,'#5a5a9a');grad.addColorStop(1,'#1a1a44')}
+    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
+    ctx.shadowColor='transparent';ctx.shadowBlur=0;
+    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+    ctx.strokeStyle=n.mastered?'rgba(92,224,184,.6)':isHover?'rgba(124,92,252,.7)':isConn?'rgba(92,224,184,.3)':isDrag?'rgba(124,92,252,.7)':'rgba(255,255,255,.12)';
+    ctx.lineWidth=isHover||isDrag?2.2:1.2;ctx.stroke();
+    ctx.font=(r*0.8)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n.icon,n.x,n.y);
+    ctx.font='bold '+(isHover?11:10)+'px sans-serif';ctx.fillStyle=isHover?'#fff':'rgba(255,255,255,.7)';ctx.fillText(n.name,n.x,n.y+r+12);
+    if(n.mastered){ctx.font='9px sans-serif';ctx.fillStyle='#5ce0b8';ctx.fillText('✔',n.x+r-8,n.y-r+8)}
+  });
+}
+function setupSkillCanvasEvents(){
+  if(!skillCanvas)return;
+  skillCanvas.onmousedown=function(e){
+    const rect=skillCanvas.getBoundingClientRect();
+    const sx=skillCanvas.width/rect.width,sy=skillCanvas.height/rect.height;
+    const mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sy;
+    for(let i=skillGNodes.length-1;i>=0;i--){
+      const n=skillGNodes[i],dx=mx-n.x,dy=my-n.y;
+      if(dx*dx+dy*dy<(n.radius+8)*(n.radius+8)){skillDragNode=n;skillHoverNode=n;if(skillAnim===null)startSkillSim();drawSkillGraph();return}
+    }
+    skillDragNode=null;skillHoverNode=null;drawSkillGraph();
+  };
+  skillCanvas.onmousemove=function(e){
+    const rect=skillCanvas.getBoundingClientRect();
+    const sx=skillCanvas.width/rect.width,sy=skillCanvas.height/rect.height;
+    const mx=(e.clientX-rect.left)*sx,my=(e.clientY-rect.top)*sy;
+    if(skillDragNode){skillDragNode.x=mx;skillDragNode.y=my;skillDragNode.vx=0;skillDragNode.vy=0;drawSkillGraph();return}
+    skillHoverNode=null;
+    for(let i=skillGNodes.length-1;i>=0;i--){const n=skillGNodes[i],dx=mx-n.x,dy=my-n.y;if(dx*dx+dy*dy<(n.radius+8)*(n.radius+8)){skillHoverNode=n;break}}
+    skillCanvas.style.cursor=skillHoverNode?'pointer':'grab';drawSkillGraph();
+  };
+  skillCanvas.onmouseup=function(){if(skillDragNode){skillDragNode=null;drawSkillGraph()}};
+  skillCanvas.onmouseleave=function(){skillDragNode=null;skillHoverNode=null;skillCanvas.style.cursor='default';drawSkillGraph()};
+  skillCanvas.ontouchstart=function(e){
+    if(e.touches.length!==1)return;e.preventDefault();
+    const rect=skillCanvas.getBoundingClientRect();
+    const sx=skillCanvas.width/rect.width,sy=skillCanvas.height/rect.height;
+    const mx=(e.touches[0].clientX-rect.left)*sx,my=(e.touches[0].clientY-rect.top)*sy;
+    for(let i=skillGNodes.length-1;i>=0;i--){
+      const n=skillGNodes[i],dx=mx-n.x,dy=my-n.y;
+      if(dx*dx+dy*dy<(n.radius+18)*(n.radius+18)){skillDragNode=n;skillHoverNode=n;if(skillAnim===null)startSkillSim();drawSkillGraph();return}
+    }
+    skillDragNode=null;skillHoverNode=null;drawSkillGraph();
+  };
+  skillCanvas.ontouchmove=function(e){
+    if(!skillDragNode)return;e.preventDefault();
+    const rect=skillCanvas.getBoundingClientRect();
+    const sx=skillCanvas.width/rect.width,sy=skillCanvas.height/rect.height;
+    skillDragNode.x=(e.touches[0].clientX-rect.left)*sx;skillDragNode.y=(e.touches[0].clientY-rect.top)*sy;
+    skillDragNode.vx=0;skillDragNode.vy=0;drawSkillGraph();
+  };
+  skillCanvas.ontouchend=function(){skillDragNode=null;drawSkillGraph()};
+  skillCanvas.onclick=function(e){
+    if(skillHoverNode){
+      e.stopPropagation();
+      const msg='['+skillHoverNode.name+']\n1) Add branch\n2) '+(skillHoverNode.mastered?'Unmaster':'Master')+'\n3) Delete';
+      const act=prompt(msg);
+      if(act==='1')openSkillNodeModal(skillHoverNode.id);
+      else if(act==='2')toggleSkillMastered(skillHoverNode.id);
+      else if(act==='3')deleteSkillNode(skillHoverNode.id);
+    }
+  };
+  window.addEventListener('resize',function(){
+    if(!skillCanvas)return;const container=document.getElementById('skill-tree-container');if(!container)return;
+    const rect=container.getBoundingClientRect(),w=Math.max(300,rect.width||300);
+    skillCanvas.width=w*2;skillCanvas.height=460*2;skillCanvas.style.width=w+'px';skillCanvas.style.height='460px';drawSkillGraph();
+  });
+}
+function resetSkillGraph(){initSkillGraph()}
+function refreshSkillTree(){
+  const container=document.getElementById('skill-tree-container');
+  if(!container)return;
+  if(!DATA.skillRoots||DATA.skillRoots.length===0){
+    container.innerHTML='<div class="empty-state"><div class="icon">🌱</div>还没有技能，点击下方按钮种下第一个根技能</div>';
+    skillCanvas=null;skillCtx=null;if(skillAnim){cancelAnimationFrame(skillAnim);skillAnim=null}
+    return;
+  }
+  if(skillAnim){cancelAnimationFrame(skillAnim);skillAnim=null}
+  initSkillGraph();
+}
+function renderSkillNode(){return''}
 function updateDebugBar(){var ds=document.getElementById("db-skills");var dg=document.getElementById("db-goals");var dt=document.getElementById("db-tasks");var dp=document.getElementById("db-points");if(ds)ds.textContent=(DATA.skillRoots||[]).length;if(dg)dg.textContent=(DATA.goals||[]).length;if(dt)dt.textContent=(DATA.tasks||[]).length;if(dp)dp.textContent=DATA.points||0;}function refreshAll(){refreshTopBar();refreshToday();refreshCalendar();refreshSkillTree();refreshGoals();refreshMerit();refreshSettings();updateDebugBar()}
 function refreshTopBar(){const s=getStreak();const xp=getXpProgress();document.getElementById('streak-num').textContent=s;document.getElementById('pts-num').textContent=DATA.points;document.getElementById('lvl-num').textContent='Lv.'+xp.level;const btn=document.getElementById('signin-btn');if(DATA.signIns[TODAY]){btn.textContent='✅ 已签到';btn.classList.add('done')}else{btn.textContent='✨ 签到';btn.classList.remove('done')}document.getElementById('xp-fill-top').style.width=xp.pct+'%';document.getElementById('xp-text-top').textContent='Lv.'+xp.level+' → Lv.'+(xp.level+1)+' ('+xp.current+'/'+xp.needed+' XP)'}
 function refreshToday(){applyPenalties();const container=document.getElementById('today-modules');const cats=DATA.categories||[];const allTasks=DATA.tasks.filter(t=>isTaskDueToday(t)&&t.type!=='monitor');const monitorTasks=DATA.tasks.filter(t=>t.type==='monitor');const totalDone=allTasks.filter(t=>t.completedToday).length;const totalAll=allTasks.length;document.getElementById('today-summary-text').textContent='已完成 '+totalDone+'/'+totalAll;if(cats.length===0){container.innerHTML='<div class="empty-state"><div class="icon">📂</div>请先在「设定任务」中添加分类</div>';return}let html='';for(const cat of cats){const catTasks=allTasks.filter(t=>t.categoryId===cat.id);const catMonitors=monitorTasks.filter(t=>t.categoryId===cat.id);if(catTasks.length===0&&catMonitors.length===0)continue;const catDone=catTasks.filter(t=>t.completedToday).length;const catTotal=catTasks.length;html+='<div class="cat-module" style="border-color:'+cat.color+'44;">';html+='<div class="cat-header" style="background:'+cat.color+'11;color:'+cat.color+';" onclick="this.parentElement.classList.toggle(\'collapsed\')">';html+='<span>'+escHtml(cat.icon)+' '+escHtml(cat.name)+'</span>';html+='<span class="cat-progress">'+catDone+'/'+catTotal+'</span>';html+='<span class="arrow">▼</span></div>';html+='<div class="cat-body">';for(const t of catTasks){const done=t.completedToday;const isNeg=t.type==='habit'&&t.category==='negative';let meta='';if(t.cycle==='weekly')meta='每周';else if(t.cycle==='custom')meta='每'+t.intervalDays+'天';else if(t.cycle==='deadline')meta='截止:'+t.deadlineDate;else meta='每日';if(isNeg)meta+=' · 需守住';let missInfo='';if(t.type==='flexible'){const m=t.consecutiveMisses||0;if(m>0)missInfo='<span class="miss-counter'+(m>=2?' danger':'')+'" style="margin-left:4px;">⚠ 连缺'+m+'次</span>'}let scoreHtml='';if(isNeg){scoreHtml='<span class="task-score pos">守住+'+t.reward+'</span><span class="task-score neg">破-'+t.penalty+'</span>'}else{scoreHtml='<span class="task-score pos">+'+t.reward+'</span>'}let parentInfo='';if(t.parentGoalId&&t.parentPhaseId){const goal=DATA.goals.find(g=>g.id===t.parentGoalId);if(goal){const ph=goal.phases.find(p=>p.id===t.parentPhaseId);if(ph)parentInfo=' <span style="font-size:10px;color:var(--text2);">· '+escHtml(goal.name)+' / '+escHtml(ph.name)+'</span>'}}const icon=isNeg?'🚫':'✅';const actLabel=done?'撤销':(isNeg?'守住了':'完成');const actCls=done?'btn-outline':(isNeg?'btn-success':'btn-success');html+='<div class="task-row'+(done?' done':'')+'" data-task-id="'+t.id+'"><span class="task-icon">'+icon+'</span><div class="task-info"><div class="task-name">'+escHtml(t.name)+parentInfo+'</div><div class="task-meta">'+meta+missInfo+'</div></div>'+scoreHtml+'<div class="task-act"><button class="btn '+actCls+' btn-xs" onclick="toggleTask(\''+t.id+'\')">'+actLabel+'</button></div></div>'}for(const m of catMonitors){const ack=m.lastAck===TODAY;const subLabel=m.subType==='reminder'?'🔔':'📊';html+='<div class="monitor-inline"><span>'+subLabel+'</span><span style="flex:1;">'+escHtml(m.name)+'</span>'+(m.url?'<a href="'+escHtml(m.url)+'" target="_blank">🔗</a>':'')+'<button class="btn btn-xs '+(ack?'btn-outline':'btn-primary')+'" onclick="ackMonitor(\''+m.id+'\')">'+(ack?'已查看':'去查看')+'</button></div>'}html+='</div></div>'}if(!html)html='<div class="empty-state"><div class="icon">🎉</div>今天没有待办任务</div>';container.innerHTML=html}
