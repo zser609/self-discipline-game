@@ -305,7 +305,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div class="cat-chips" id="settings-cats"></div>
     <div style="display:flex;gap:8px;margin-top:8px;">
       <input type="text" id="new-cat-name" placeholder="分类名" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;">
-      <input type="text" id="new-cat-icon" placeholder="图标" style="width:60px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;" maxlength="2">
+      <div class="emoji-input-wrap"><input type="text" id="new-cat-icon" readonly maxlength="2" style="width:56px;text-align:center;font-size:18px;cursor:pointer;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)" onclick="openEmojiPicker('new-cat-icon')" value="📁"><button type="button" class="emoji-icon-trigger" onclick="openEmojiPicker('new-cat-icon')" title="选择图标">🎨</button></div>
       <input type="color" id="new-cat-color" value="#a78bfa" style="width:36px;height:36px;border:none;cursor:pointer;">
       <button class="btn btn-primary btn-sm" onclick="addCategory()">+ 添加分类</button>
     </div>
