@@ -95,7 +95,7 @@
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal-content"></div></div>
 <script>
 const STORAGE_KEY='sdg_v3';
-const TODAY=new Date().toISOString().split('T')[0];
+const const d=new Date();TODAY=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const DEFAULT_CATS=[
   {id:'cat_body',name:'身体',icon:'💪',color:'#4ade80'},
   {id:'cat_study',name:'学习',icon:'📚',color:'#a78bfa'},
