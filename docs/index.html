@@ -264,6 +264,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 #skill-canvas{touch-action:manipulation}
 
 .skill-zoom-btn{width:26px;height:26px;padding:0!important;border-radius:13px!important;font-size:14px;line-height:1;min-width:0!important}
+
+.cat-icon-btn{-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:border-color .2s,background .2s}
+.cat-icon-btn:hover{border-color:var(--primary);background:rgba(124,92,252,.1)}
 </style>
 </head>
 <body>
@@ -312,11 +315,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="card">
     <h2>📂 自定义分类</h2>
     <div class="cat-chips" id="settings-cats"></div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <input type="text" id="new-cat-name" placeholder="分类名" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;">
-      <div class="emoji-input-wrap"><input type="text" id="new-cat-icon" readonly maxlength="2" style="width:56px;text-align:center;font-size:18px;cursor:pointer;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)" onclick="openEmojiPicker('new-cat-icon')" value="📁"><button type="button" class="emoji-icon-trigger" onclick="openEmojiPicker('new-cat-icon')" title="选择图标">🎨</button></div>
-      <input type="color" id="new-cat-color" value="#a78bfa" style="width:36px;height:36px;border:none;cursor:pointer;">
-      <button class="btn btn-primary btn-sm" onclick="addCategory()">+ 添加分类</button>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="new-cat-name" placeholder="分类名" style="flex:1;min-width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+      <button type="button" id="new-cat-icon-btn" class="cat-icon-btn" onclick="openEmojiPicker('new-cat-icon')" title="选择图标" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:18px;min-width:44px;text-align:center">📁</button>
+      <input type="hidden" id="new-cat-icon" value="📁">
+      <input type="color" id="new-cat-color" value="#a78bfa" style="width:34px;height:34px;border:none;cursor:pointer;border-radius:8px;padding:0">
+      <button class="btn btn-primary btn-sm" onclick="addCategory()" style="white-space:nowrap">+ 添加</button>
     </div>
   </div>
   <div class="section-title">① 打卡任务</div>
@@ -376,7 +380,7 @@ let emojiPickerTarget=null;
 const EMOJI_CATS=[{id:'face',label:'表情',icons:['😊','😎','🤩','🥳','😤','😭','🤔','👍','👎','🙏','💪','🧠','👀','🔥','⭐','✨','💎','🎉','❤️','💔','🤗','😴','🤯','🫡','🥺','😇','🫶']},{id:'work',label:'工作',icons:['💼','📊','📈','📉','📋','📝','✏️','🖊️','🗂️','📁','📌','🔖','⏰','⌚','📅','🗓️','✅','☑️','📎','🔗','📤','📥']},{id:'study',label:'学习',icons:['📚','📖','✍️','🎓','🏫','📐','🔬','🔭','💡','🧩','🎯','🏆','🥇','🥈','🥉','📜','🖥️','⌨️','🖱️','🧮']},{id:'health',label:'健康',icons:['💪','🏃','🏋️','🧘','🚴','🏊','🤸','🍎','🥗','💤','❤️‍🔥','🫁','🧘‍♀️','🤾','⛹️','🚶','🧗','⚽','🏀']},{id:'entertain',label:'娱乐',icons:['🎮','🎵','🎸','🎹','🎨','🎭','🎬','📺','🎧','🎤','🎲','♟️','🕹️','🎯','🎳','🎱','🃏','🎻','🥁']},{id:'life',label:'生活',icons:['🏠','🛏️','🧹','🧺','🍳','👨‍🍳','🌱','🪴','🐱','🐶','☕','🍵','🍜','🛒','🧳','✈️','🚗','🚲','🌍','🧭']},{id:'money',label:'理财',icons:['💰','💵','💸','🏦','📊','💳','🪙','💹','🏷️','🧾','📈','💎','🤑','💲','🛒']},{id:'social',label:'社交',icons:['🌐','💬','📱','📞','✉️','📧','🤝','🫂','👥','🗣️','💭','📢','🔔','📣','👋','🫱']},{id:'nature',label:'自然',icons:['🌿','🌸','🌙','☀️','⭐','🌈','❄️','🔥','💧','🌊','🌲','🍀','🌻','🪐','⚡','☁️','⛅','🌧️']}];
 function openEmojiPicker(inputId){emojiPickerTarget=inputId;const input=document.getElementById(inputId);const hdr=document.getElementById('emoji-picker-header');hdr.innerHTML=EMOJI_CATS.map((c,i)=>'<button class="emoji-picker-cat'+(i===0?' active':'')+'" onclick="switchEmojiCat(event,\''+c.id+'\')">'+c.label+'</button>').join('');document.getElementById('emoji-picker-grid').innerHTML=EMOJI_CATS[0].icons.map(e=>'<div class="emoji-picker-item" onclick="selectEmoji(\''+e+'\')">'+e+'</div>').join('');document.getElementById('emoji-picker-overlay').classList.add('show')}
 function switchEmojiCat(event,catId){event.stopPropagation();document.querySelectorAll('.emoji-picker-cat').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');const cat=EMOJI_CATS.find(c=>c.id===catId);if(cat)document.getElementById('emoji-picker-grid').innerHTML=cat.icons.map(e=>'<div class="emoji-picker-item" onclick="selectEmoji(\''+e+'\")">'+e+'</div>').join('')}
-function selectEmoji(emoji){if(emojiPickerTarget){const input=document.getElementById(emojiPickerTarget);if(input){input.value=emoji;input.dispatchEvent(new Event('input'))}}closeEmojiPicker()}
+function selectEmoji(emoji){if(emojiPickerTarget){const input=document.getElementById(emojiPickerTarget);if(input){input.value=emoji;input.dispatchEvent(new Event('input'));const btn=document.getElementById(emojiPickerTarget+'-btn');if(btn)btn.textContent=emoji}}closeEmojiPicker()}
 function closeEmojiPicker(event){if(event){const overlay=document.getElementById('emoji-picker-overlay');const picker=document.getElementById('emoji-picker');if(!overlay)return;let el=event.target;while(el){if(el===overlay&&(el===event.target||!picker||!picker.contains(event.target)))break;el=el.parentElement}if(!el)return}document.getElementById('emoji-picker-overlay').classList.remove('show');emojiPickerTarget=null}
 function getDefaultData(){return{signIns:{},points:0,tasks:[],goals:[],categories:JSON.parse(JSON.stringify(DEFAULT_CATS)),earnedAchievements:[],skillRoots:[]}}
 function loadData(){try{let d=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!d)d=getDefaultData();const def=getDefaultData();for(const k of Object.keys(def))if(!(k in d))d[k]=def[k];if(!d.categories||d.categories.length===0)d.categories=JSON.parse(JSON.stringify(DEFAULT_CATS));return d}catch(e){return getDefaultData()}}
