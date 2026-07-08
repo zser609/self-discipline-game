@@ -698,7 +698,7 @@ function navigateMonth(dir){
   calendarMonth+=dir;
   if(calendarMonth<0){calendarMonth=11;calendarYear--}
   if(calendarMonth>11){calendarMonth=0;calendarYear++}
-  refreshCalendar();
+  refreshCalendar();refreshDashboard();
 }
 
 function getWeekBounds(){
