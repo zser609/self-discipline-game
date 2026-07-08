@@ -252,6 +252,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   .tree-node-card{min-width:80px;padding:12px}
   .emoji-picker{max-width:95vw}
 }
+
+.skill-action-bar{display:none;position:sticky;bottom:0;background:linear-gradient(135deg,rgba(24,24,58,.98),rgba(20,20,45,.98));border-radius:var(--radius) var(--radius) 0 0;padding:10px 16px;z-index:55;border-top:2px solid var(--primary);align-items:center;gap:10px;flex-wrap:wrap;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);margin-top:8px}
+.skill-action-bar.show{display:flex}
+.skill-action-name{font-weight:700;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skill-action-btns{display:flex;gap:6px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -286,7 +291,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="card"><h2>📅 打卡热力图</h2><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">颜色深浅 = 当天任务完成率</div><div id="calendar-heatmap"></div></div>
 </div>
 <div class="tab-content" id="tab-skilltree">
-  <div class="card"><h2>🌳 我的技能树</h2><div style="font-size:12px;color:var(--text2);margin-bottom:12px;">每一个技能都来自你真实的坚持 · 点击节点操作</div><div id="skill-tree-container" style="position:relative;min-height:460px;border-radius:var(--radius);overflow:hidden;background:var(--bg2)"></div><div style="display:flex;gap:10px;margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="openSkillNodeModal(null)">+ 种下根技能</button><button class="btn btn-outline btn-sm" onclick="resetSkillGraph()">🔄 重置布局</button></div></div>
+  <div class="card"><h2>🌳 我的技能树</h2><div style="font-size:12px;color:var(--text2);margin-bottom:12px;">每一个技能都来自你真实的坚持 · 点击节点操作</div><div id="skill-tree-container" style="position:relative;min-height:460px;border-radius:var(--radius);overflow:hidden;background:var(--bg2)"></div><div class="skill-action-bar" id="skill-action-bar"><span class="skill-action-name" id="skill-action-name"></span><div class="skill-action-btns"><button class="btn btn-primary btn-xs" onclick="doSkillAction('add')">+ 添加分支</button><button class="btn btn-outline btn-xs" id="skill-action-master" onclick="doSkillAction('master')">✔ 标记掌握</button><button class="btn btn-danger btn-xs" onclick="doSkillAction('delete')">✖ 删除</button></div></div><div style="display:flex;gap:10px;margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="openSkillNodeModal(null)">+ 种下根技能</button><button class="btn btn-outline btn-sm" onclick="resetSkillGraph()">🔄 重置布局</button></div></div>
 </div>
 <div class="tab-content" id="tab-merit">
   <div class="card"><h2>🏆 成就徽章</h2><div class="ach-grid" id="merit-achievements"></div></div>
@@ -357,6 +362,13 @@ const ACHIEVEMENTS=[
   {id:'t200',icon:'🏅',name:'200次完成',cond:()=>totalTaskCompletions()>=200},
   {id:'g1',icon:'🎯',name:'首个阶段',cond:()=>DATA.goals.some(g=>g.phases.some(p=>p.completed))}
 ];
+
+let emojiPickerTarget=null;
+const EMOJI_CATS=[{id:'face',label:'表情',icons:['😊','😎','🤩','🥳','😤','😭','🤔','👍','👎','🙏','💪','🧠','👀','🔥','⭐','✨','💎','🎉','❤️','💔','🤗','😴','🤯','🫡','🥺','😇','🫶']},{id:'work',label:'工作',icons:['💼','📊','📈','📉','📋','📝','✏️','🖊️','🗂️','📁','📌','🔖','⏰','⌚','📅','🗓️','✅','☑️','📎','🔗','📤','📥']},{id:'study',label:'学习',icons:['📚','📖','✍️','🎓','🏫','📐','🔬','🔭','💡','🧩','🎯','🏆','🥇','🥈','🥉','📜','🖥️','⌨️','🖱️','🧮']},{id:'health',label:'健康',icons:['💪','🏃','🏋️','🧘','🚴','🏊','🤸','🍎','🥗','💤','❤️‍🔥','🫁','🧘‍♀️','🤾','⛹️','🚶','🧗','⚽','🏀']},{id:'entertain',label:'娱乐',icons:['🎮','🎵','🎸','🎹','🎨','🎭','🎬','📺','🎧','🎤','🎲','♟️','🕹️','🎯','🎳','🎱','🃏','🎻','🥁']},{id:'life',label:'生活',icons:['🏠','🛏️','🧹','🧺','🍳','👨‍🍳','🌱','🪴','🐱','🐶','☕','🍵','🍜','🛒','🧳','✈️','🚗','🚲','🌍','🧭']},{id:'money',label:'理财',icons:['💰','💵','💸','🏦','📊','💳','🪙','💹','🏷️','🧾','📈','💎','🤑','💲','🛒']},{id:'social',label:'社交',icons:['🌐','💬','📱','📞','✉️','📧','🤝','🫂','👥','🗣️','💭','📢','🔔','📣','👋','🫱']},{id:'nature',label:'自然',icons:['🌿','🌸','🌙','☀️','⭐','🌈','❄️','🔥','💧','🌊','🌲','🍀','🌻','🪐','⚡','☁️','⛅','🌧️']}];
+function openEmojiPicker(inputId){emojiPickerTarget=inputId;const input=document.getElementById(inputId);const hdr=document.getElementById('emoji-picker-header');hdr.innerHTML=EMOJI_CATS.map((c,i)=>'<button class="emoji-picker-cat'+(i===0?' active':'')+'" onclick="switchEmojiCat(event,\''+c.id+'\')">'+c.label+'</button>').join('');document.getElementById('emoji-picker-grid').innerHTML=EMOJI_CATS[0].icons.map(e=>'<div class="emoji-picker-item" onclick="selectEmoji(\''+e+'\')">'+e+'</div>').join('');document.getElementById('emoji-picker-overlay').classList.add('show')}
+function switchEmojiCat(event,catId){event.stopPropagation();document.querySelectorAll('.emoji-picker-cat').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');const cat=EMOJI_CATS.find(c=>c.id===catId);if(cat)document.getElementById('emoji-picker-grid').innerHTML=cat.icons.map(e=>'<div class="emoji-picker-item" onclick="selectEmoji(\''+e+'\")">'+e+'</div>').join('')}
+function selectEmoji(emoji){if(emojiPickerTarget){const input=document.getElementById(emojiPickerTarget);if(input){input.value=emoji;input.dispatchEvent(new Event('input'))}}closeEmojiPicker()}
+function closeEmojiPicker(event){if(event&&event.target!==document.getElementById('emoji-picker-overlay'))return;document.getElementById('emoji-picker-overlay').classList.remove('show');emojiPickerTarget=null}
 function getDefaultData(){return{signIns:{},points:0,tasks:[],goals:[],categories:JSON.parse(JSON.stringify(DEFAULT_CATS)),earnedAchievements:[],skillRoots:[]}}
 function loadData(){try{let d=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!d)d=getDefaultData();const def=getDefaultData();for(const k of Object.keys(def))if(!(k in d))d[k]=def[k];if(!d.categories||d.categories.length===0)d.categories=JSON.parse(JSON.stringify(DEFAULT_CATS));return d}catch(e){return getDefaultData()}}
 let _st=null;function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA));if(sb&&(DATA.tasks.length>0||Object.keys(DATA.signIns).length>0||DATA.points>0)){clearTimeout(_st);_st=setTimeout(()=>{sb.from('user_data').upsert({id:1,data:DATA,updated_at:new Date().toISOString()}).then(({error})=>{if(!error)console.log('☁️ Synced')})},800)}}
@@ -377,7 +389,7 @@ function applyPenalties(){const todayTasks=DATA.tasks.filter(t=>isTaskDueToday(t
 
 function findSkillNode(id,nodes){if(!nodes)nodes=DATA.skillRoots||[];for(const n of nodes){if(n.id===id)return n;const found=findSkillNode(id,n.children||[]);if(found)return found}return null}
 function findParentNode(id,nodes){if(!nodes)nodes=DATA.skillRoots||[];for(const n of nodes){if((n.children||[]).some(c=>c.id===id))return n;const found=findParentNode(id,n.children||[]);if(found)return found}return null}
-function openSkillNodeModal(parentId){const modal=document.getElementById('modal-content');const title=parentId?'➕ 添加分支技能':'🌱 种下根技能';modal.innerHTML='<h2>'+title+'</h2><form onsubmit="submitSkillNode(event,\''+(parentId||'')+'\')"><div class="form-g"><label>技能名称 *</label><input type="text" id="sn-name" required placeholder="例如：学会吉他"></div><div class="skill-node-modal-row"><div class="form-g"><label>图标</label><input type="text" id="sn-icon" value="🌱" maxlength="2" placeholder="🎸"></div></div>'+(parentId?'':'<div class="form-g"><label>来源说明（可选）</label><input type="text" id="sn-source" placeholder="例如：来自长期目标「健身计划」"></div>')+'<div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">取消</button><button type="submit" class="btn btn-primary">确定</button></div></form>';document.getElementById('modal-overlay').classList.add('show')}
+function openSkillNodeModal(parentId){const modal=document.getElementById('modal-content');const title=parentId?'➕ 添加分支技能':'🌱 种下根技能';modal.innerHTML='<h2>'+title+'</h2><form onsubmit="submitSkillNode(event,\''+(parentId||'')+'\')"><div class="form-g"><label>技能名称 *</label><input type="text" id="sn-name" required placeholder="例如：学会吉他"></div><div class="skill-node-modal-row"><div class="form-g"><label>图标</label><div class="emoji-input-wrap"><input type="text" id="sn-icon" value="🌱" readonly maxlength="2" style="width:56px;text-align:center;font-size:18px;cursor:pointer" onclick="openEmojiPicker(&apos;sn-icon&apos;)"><button type="button" class="emoji-icon-trigger" onclick="openEmojiPicker(&apos;sn-icon&apos;)" title="选择图标">🎨</button></div></div></div>'+(parentId?'':'<div class="form-g"><label>来源说明（可选）</label><input type="text" id="sn-source" placeholder="例如：来自长期目标「健身计划」"></div>')+'<div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">取消</button><button type="submit" class="btn btn-primary">确定</button></div></form>';document.getElementById('modal-overlay').classList.add('show')}
 function submitSkillNode(event,parentId){event.preventDefault();const node={id:uid(),name:document.getElementById('sn-name').value.trim(),icon:document.getElementById('sn-icon').value.trim()||'🌱',source:(document.getElementById('sn-source')||{}).value||'',mastered:false,children:[],createdAt:TODAY};if(parentId){const parent=findSkillNode(parentId);if(parent){if(!parent.children)parent.children=[];parent.children.push(node)}else DATA.skillRoots.push(node)}else{DATA.skillRoots.push(node)}saveData();closeModal();refreshAll()}
 function convertPhaseToSkill(goalId,phaseId){const goal=DATA.goals.find(g=>g.id===goalId);if(!goal)return;const phase=goal.phases.find(p=>p.id===phaseId);if(!phase||!phase.completed)return;if(!confirm('将阶段「'+phase.name+'」转化为技能节点吗？'))return;DATA.skillRoots.push({id:uid(),name:phase.name,icon:phase.reward?'🎯':'⭐',source:'来自长期目标「'+goal.name+'」',mastered:true,children:[],createdAt:TODAY,goalId,phaseId});saveData();refreshAll();showToast('🌳 已种入技能树','「'+phase.name+'」已添加为根技能')}
 function toggleSkillMastered(id){const node=findSkillNode(id);if(!node)return;node.mastered=!node.mastered;saveData();refreshAll()}
@@ -530,11 +542,9 @@ function setupSkillCanvasEvents(){
   skillCanvas.onclick=function(e){
     if(skillHoverNode){
       e.stopPropagation();
-      const msg='['+skillHoverNode.name+']\n1) Add branch\n2) '+(skillHoverNode.mastered?'Unmaster':'Master')+'\n3) Delete';
-      const act=prompt(msg);
-      if(act==='1')openSkillNodeModal(skillHoverNode.id);
-      else if(act==='2')toggleSkillMastered(skillHoverNode.id);
-      else if(act==='3')deleteSkillNode(skillHoverNode.id);
+      showSkillActionBar(skillHoverNode);
+    }else{
+      hideSkillActionBar();
     }
   };
   window.addEventListener('resize',function(){
@@ -542,6 +552,29 @@ function setupSkillCanvasEvents(){
     const rect=container.getBoundingClientRect(),w=Math.max(300,rect.width||300);
     skillCanvas.width=w*2;skillCanvas.height=460*2;skillCanvas.style.width=w+'px';skillCanvas.style.height='460px';drawSkillGraph();
   });
+}
+
+let skillActionBarNode=null;
+function showSkillActionBar(node){
+  skillActionBarNode=node;
+  const bar=document.getElementById('skill-action-bar');
+  if(!bar)return;
+  document.getElementById('skill-action-name').textContent=node.icon+' '+node.name;
+  document.getElementById('skill-action-master').textContent=node.mastered?'🔄 取消掌握':'✔ 标记掌握';
+  bar.classList.add('show');
+}
+function hideSkillActionBar(){
+  const bar=document.getElementById('skill-action-bar');
+  if(bar)bar.classList.remove('show');
+  skillActionBarNode=null;
+}
+function doSkillAction(action){
+  if(!skillActionBarNode)return;
+  const node=skillActionBarNode;
+  if(action==='add')openSkillNodeModal(node.id);
+  else if(action==='master')toggleSkillMastered(node.id);
+  else if(action==='delete')deleteSkillNode(node.id);
+  hideSkillActionBar();
 }
 function resetSkillGraph(){initSkillGraph()}
 function refreshSkillTree(){
@@ -595,7 +628,7 @@ function init(){syncFromCloud();document.addEventListener("submit",function(e){e
 window.doCheckIn=doCheckIn;window.toggleTask=toggleTask;window.openTaskModal=openTaskModal;window.openGoalModal=openGoalModal;window.openPhaseModal=openPhaseModal;window.openMonitorModal=openMonitorModal;window.completePhase=completePhase;window.editPenalty=editPenalty;window.editFlexRules=editFlexRules;window.savePenalty=savePenalty;window.saveFlexRules=saveFlexRules;window.addCategory=addCategory;window.deleteCategory=deleteCategory;window.deleteTask=deleteTask;window.deleteGoal=deleteGoal;window.deletePhase=deletePhase;window.ackMonitor=ackMonitor;window.closeModal=closeModal;window.toggleCycleOpts=toggleCycleOpts;window.openSkillNodeModal=openSkillNodeModal;window.submitSkillNode=submitSkillNode;window.convertPhaseToSkill=convertPhaseToSkill;window.toggleSkillMastered=toggleSkillMastered;window.deleteSkillNode=deleteSkillNode;window.submitGoal=submitGoal;window.submitPhase=submitPhase;window.submitTask=submitTask;window.submitMonitor=submitMonitor;window.handleMonitorFile=handleMonitorFile;
 function exportBackup(){const blob=new Blob([JSON.stringify(DATA,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="discipline-realm-backup-"+new Date().toISOString().split("T")[0]+".json";a.click();URL.revokeObjectURL(url);showToast("✅ 备份已下载")}
 function importBackup(input){if(!input.files||!input.files[0])return;const reader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);if(!data.tasks||!data.signIns||data.points===undefined){showToast("❌ 无效的备份文件");return}if(!confirm("⚠️ 恢复备份将覆盖当前数据，确定继续？"))return;DATA=data;saveData();refreshAll();showToast("✅ 数据已恢复")}catch(err){showToast("❌ 文件解析失败")}};reader.readAsText(input.files[0]);input.value=""}
-window.exportBackup=exportBackup;window.importBackup=importBackup;
+window.openEmojiPicker=openEmojiPicker;window.switchEmojiCat=switchEmojiCat;window.selectEmoji=selectEmoji;window.closeEmojiPicker=closeEmojiPicker;window.showSkillActionBar=showSkillActionBar;window.hideSkillActionBar=hideSkillActionBar;window.doSkillAction=doSkillAction;window.exportBackup=exportBackup;window.importBackup=importBackup;
 
 init()
 </script>
