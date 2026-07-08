@@ -398,7 +398,7 @@ function closeEmojiPicker(event){if(event){const overlay=document.getElementById
 function getDefaultData(){return{signIns:{},points:0,tasks:[],goals:[],categories:JSON.parse(JSON.stringify(DEFAULT_CATS)),earnedAchievements:[],skillRoots:[]}}
 function loadData(){try{let d=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!d)d=getDefaultData();const def=getDefaultData();for(const k of Object.keys(def))if(!(k in d))d[k]=def[k];if(!d.categories||d.categories.length===0)d.categories=JSON.parse(JSON.stringify(DEFAULT_CATS));return d}catch(e){return getDefaultData()}}
 let _st=null;function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA));if(sb&&(DATA.tasks.length>0||Object.keys(DATA.signIns).length>0||DATA.points>0)){clearTimeout(_st);_st=setTimeout(()=>{sb.from('user_data').upsert({id:1,data:DATA,updated_at:new Date().toISOString()}).then(({error})=>{if(!error)console.log('☁️ Synced')})},800)}}
-let DATA=loadData();let currentTab='today';
+let calendarYear=null,calendarMonth=null;let DATA=loadData();let currentTab='today';
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function getLevel(){let lv=1;while(DATA.points>=xpFor(lv+1))lv++;return lv}
 function xpFor(lv){return Math.floor(100*Math.pow(lv,1.6))}
@@ -637,7 +637,7 @@ function refreshToday(){applyPenalties();const container=document.getElementById
 function refreshCalendar(){
   const container=document.getElementById('calendar-heatmap');
   const now=new Date();
-  if(calendarYear===null){calendarYear=now.getFullYear();calendarMonth=now.getMonth()}
+  if(calendarYear===null||calendarYear===undefined){calendarYear=now.getFullYear();calendarMonth=now.getMonth()}
   const year=calendarYear,month=calendarMonth;
   const firstDay=new Date(year,month,1).getDay();
   const daysInMonth=new Date(year,month+1,0).getDate();
