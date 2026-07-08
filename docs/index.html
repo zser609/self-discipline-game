@@ -1,0 +1,37 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#a78bfa">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>自律大陆 · Discipline Realm</title>
+  <script type="module" crossorigin src="./assets/index-CDlGVI-B.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-yN5Ss08L.css">
+</head>
+<body>
+  <div class="app">
+    <div class="topbar" id="topbar"></div>
+    <div class="nav">
+      <button class="nav-btn active" data-tab="today">🏠 今日</button>
+      <button class="nav-btn" data-tab="calendar">📅 日历</button>
+      <button class="nav-btn" data-tab="skilltree">🌳 技能</button>
+      <button class="nav-btn" data-tab="merit">🏆 功勋</button>
+      <button class="nav-btn" data-tab="goals">🎯 目标</button>
+      <button class="nav-btn" data-tab="settings">⚙️ 管理</button>
+    </div>
+    <div id="tab-today" class="tab-content active"></div>
+    <div id="tab-calendar" class="tab-content"></div>
+    <div id="tab-skilltree" class="tab-content"></div>
+    <div id="tab-merit" class="tab-content"></div>
+    <div id="tab-goals" class="tab-content"></div>
+    <div id="tab-settings" class="tab-content"></div>
+  </div>
+  <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal-content"></div></div>
+  <div id="debug-bar" style="position:fixed;bottom:0;left:0;right:0;background:#141428;border-top:1px solid #2a2a4a;padding:6px 14px;font-size:11px;color:#8888aa;z-index:300;display:flex;gap:16px;flex-wrap:wrap;"><span>技能: <b id="db-skills" style="color:#e0e0f0">0</b></span><span>目标: <b id="db-goals" style="color:#e0e0f0">0</b></span><span>成就: <b id="db-achs" style="color:#e0e0f0">0</b></span><span>打卡: <b id="db-tasks" style="color:#e0e0f0">0</b></span><span>积分: <b id="db-points" style="color:#e0e0f0">0</b></span></div>
+  <div class="emoji-picker-overlay" id="emoji-picker-overlay" onclick="closeEmojiPicker(event)"><div class="emoji-picker" id="emoji-picker"><button class="emoji-picker-close" onclick="closeEmojiPicker()">✕</button><div class="emoji-picker-header" id="emoji-picker-header"></div><div class="emoji-picker-grid" id="emoji-picker-grid"></div></div></div>
+</body>
+</html>
