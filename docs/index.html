@@ -257,6 +257,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .skill-action-bar.show{display:flex}
 .skill-action-name{font-weight:700;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .skill-action-btns{display:flex;gap:6px;flex-shrink:0}
+
+.emoji-picker-overlay.show{touch-action:manipulation}
+.emoji-picker-item{-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.emoji-picker-cat{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#skill-canvas{touch-action:manipulation}
 </style>
 </head>
 <body>
@@ -368,7 +373,7 @@ const EMOJI_CATS=[{id:'face',label:'表情',icons:['😊','😎','🤩','🥳','
 function openEmojiPicker(inputId){emojiPickerTarget=inputId;const input=document.getElementById(inputId);const hdr=document.getElementById('emoji-picker-header');hdr.innerHTML=EMOJI_CATS.map((c,i)=>'<button class="emoji-picker-cat'+(i===0?' active':'')+'" onclick="switchEmojiCat(event,\''+c.id+'\')">'+c.label+'</button>').join('');document.getElementById('emoji-picker-grid').innerHTML=EMOJI_CATS[0].icons.map(e=>'<div class="emoji-picker-item" onclick="selectEmoji(\''+e+'\')">'+e+'</div>').join('');document.getElementById('emoji-picker-overlay').classList.add('show')}
 function switchEmojiCat(event,catId){event.stopPropagation();document.querySelectorAll('.emoji-picker-cat').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');const cat=EMOJI_CATS.find(c=>c.id===catId);if(cat)document.getElementById('emoji-picker-grid').innerHTML=cat.icons.map(e=>'<div class="emoji-picker-item" onclick="selectEmoji(\''+e+'\")">'+e+'</div>').join('')}
 function selectEmoji(emoji){if(emojiPickerTarget){const input=document.getElementById(emojiPickerTarget);if(input){input.value=emoji;input.dispatchEvent(new Event('input'))}}closeEmojiPicker()}
-function closeEmojiPicker(event){if(event&&event.target!==document.getElementById('emoji-picker-overlay'))return;document.getElementById('emoji-picker-overlay').classList.remove('show');emojiPickerTarget=null}
+function closeEmojiPicker(event){if(event){const overlay=document.getElementById('emoji-picker-overlay');const picker=document.getElementById('emoji-picker');if(!overlay)return;let el=event.target;while(el){if(el===overlay&&(el===event.target||!picker||!picker.contains(event.target)))break;el=el.parentElement}if(!el)return}document.getElementById('emoji-picker-overlay').classList.remove('show');emojiPickerTarget=null}
 function getDefaultData(){return{signIns:{},points:0,tasks:[],goals:[],categories:JSON.parse(JSON.stringify(DEFAULT_CATS)),earnedAchievements:[],skillRoots:[]}}
 function loadData(){try{let d=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!d)d=getDefaultData();const def=getDefaultData();for(const k of Object.keys(def))if(!(k in d))d[k]=def[k];if(!d.categories||d.categories.length===0)d.categories=JSON.parse(JSON.stringify(DEFAULT_CATS));return d}catch(e){return getDefaultData()}}
 let _st=null;function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA));if(sb&&(DATA.tasks.length>0||Object.keys(DATA.signIns).length>0||DATA.points>0)){clearTimeout(_st);_st=setTimeout(()=>{sb.from('user_data').upsert({id:1,data:DATA,updated_at:new Date().toISOString()}).then(({error})=>{if(!error)console.log('☁️ Synced')})},800)}}
@@ -520,25 +525,37 @@ function setupSkillCanvasEvents(){
   };
   skillCanvas.onmouseup=function(){if(skillDragNode){skillDragNode=null;drawSkillGraph()}};
   skillCanvas.onmouseleave=function(){skillDragNode=null;skillHoverNode=null;skillCanvas.style.cursor='default';drawSkillGraph()};
+  let skillTouchMoved=false,skillTouchStartTime=0;
   skillCanvas.ontouchstart=function(e){
-    if(e.touches.length!==1)return;e.preventDefault();
+    if(e.touches.length!==1)return;
+    skillTouchMoved=false;skillTouchStartTime=Date.now();
     const rect=skillCanvas.getBoundingClientRect();
     const sx=skillCanvas.width/rect.width,sy=skillCanvas.height/rect.height;
     const mx=(e.touches[0].clientX-rect.left)*sx,my=(e.touches[0].clientY-rect.top)*sy;
+    skillHoverNode=null;skillDragNode=null;
     for(let i=skillGNodes.length-1;i>=0;i--){
       const n=skillGNodes[i],dx=mx-n.x,dy=my-n.y;
-      if(dx*dx+dy*dy<(n.radius+18)*(n.radius+18)){skillDragNode=n;skillHoverNode=n;if(skillAnim===null)startSkillSim();drawSkillGraph();return}
+      if(dx*dx+dy*dy<(n.radius+18)*(n.radius+18)){skillHoverNode=n;drawSkillGraph();return}
     }
-    skillDragNode=null;skillHoverNode=null;drawSkillGraph();
+    drawSkillGraph();
   };
   skillCanvas.ontouchmove=function(e){
-    if(!skillDragNode)return;e.preventDefault();
+    if(!skillHoverNode)return;
+    if(e.touches.length!==1)return;
     const rect=skillCanvas.getBoundingClientRect();
     const sx=skillCanvas.width/rect.width,sy=skillCanvas.height/rect.height;
-    skillDragNode.x=(e.touches[0].clientX-rect.left)*sx;skillDragNode.y=(e.touches[0].clientY-rect.top)*sy;
-    skillDragNode.vx=0;skillDragNode.vy=0;drawSkillGraph();
+    const mx=(e.touches[0].clientX-rect.left)*sx,my=(e.touches[0].clientY-rect.top)*sy;
+    const dx=mx-skillHoverNode.x,dy=my-skillHoverNode.y;
+    if(Math.abs(dx)>5||Math.abs(dy)>5){skillTouchMoved=true;skillDragNode=skillHoverNode}
+    if(skillDragNode){e.preventDefault();skillDragNode.x=mx;skillDragNode.y=my;skillDragNode.vx=0;skillDragNode.vy=0;drawSkillGraph()}
   };
-  skillCanvas.ontouchend=function(){skillDragNode=null;drawSkillGraph()};
+  skillCanvas.ontouchend=function(){
+    if(skillDragNode){skillDragNode=null;drawSkillGraph();return}
+    const dt=Date.now()-skillTouchStartTime;
+    if(skillHoverNode&&!skillTouchMoved&&dt<500){showSkillActionBar(skillHoverNode)}
+    else{hideSkillActionBar()}
+    skillDragNode=null;drawSkillGraph();
+  };
   skillCanvas.onclick=function(e){
     if(skillHoverNode){
       e.stopPropagation();
