@@ -17,7 +17,7 @@ const TODAY = new Date().toISOString().split("T")[0];
 // ===== B站 API =====
 async function fetchBilibili(mid) {
   try {
-    const url = `https://api.bilibili.com/x/space/wbi/arc/search?mid=${mid}&ps=10&order=pubdate`;
+    const url = `https://api.bilibili.com/x/space/arc/search?mid=${mid}&ps=10&order=pubdate`;
     const res = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -83,7 +83,7 @@ async function fetchMonitor(monitor) {
     return { monitor, items, type: "bilibili", sourceId: mid };
   }
 
-  // RSS: URL以http开头且不是B站
+  // RSS/微信公众号: URL以http开头 (微信需通过RSSHub桥接: https://rsshub.app/wechat/mp/profile/MP_ID)
   if (url.startsWith("http")) {
     console.log(`[RSS] 检查 ${name} (${url})`);
     const items = await fetchRSS(url);

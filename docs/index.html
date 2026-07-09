@@ -813,7 +813,7 @@ function renderMonitorFeed(){
   let updated=[];
   for(const id in results){
     const r=results[id];
-    if(r.lastChecked===TODAY&&r.latestTitle&&!r.acknowledged&&!r.snoozed)updated.push(r);
+    if(r.latestTitle&&!r.acknowledged&&!r.snoozed)updated.push(r);
   }
   if(updated.length===0){el.innerHTML="";return}
   let h="<div class=\"card\" style=\"border-left:3px solid var(--primary2)\"><h2 style=\"margin:0 0 8px 0\">📡 监测更新 <span style=\"font-size:12px;color:var(--primary2);font-weight:400\">"+updated.length+"条新内容</span></h2>";
