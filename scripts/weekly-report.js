@@ -51,12 +51,11 @@ async function main() {
 
   const data = row.data;
   const today = new Date();
-  // 统计上周（上周日 ~ 上周六），因为每周日运行
-  const weekEnd = new Date(today);
-  weekEnd.setDate(today.getDate() - 1); // 昨天（周六）
+  // 统计本周（周一 ~ 周日），每周日运行
+  const weekEnd = new Date(today); // 今天就是周日
   weekEnd.setHours(23, 59, 59, 999);
-  const weekStart = new Date(weekEnd);
-  weekStart.setDate(weekEnd.getDate() - 6); // 上周日
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - 6); // 本周一
   weekStart.setHours(0, 0, 0, 0);
 
   // 2. 统计本周数据
