@@ -51,8 +51,12 @@ async function main() {
 
   const data = row.data;
   const today = new Date();
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay()); // 周日
+  // 统计上周（上周日 ~ 上周六），因为每周日运行
+  const weekEnd = new Date(today);
+  weekEnd.setDate(today.getDate() - 1); // 昨天（周六）
+  weekEnd.setHours(23, 59, 59, 999);
+  const weekStart = new Date(weekEnd);
+  weekStart.setDate(weekEnd.getDate() - 6); // 上周日
   weekStart.setHours(0, 0, 0, 0);
 
   // 2. 统计本周数据
@@ -99,12 +103,12 @@ async function main() {
   for (const r of Object.values(monitorResults)) {
     if (r.latestPubDate) {
       const pubDate = new Date(r.latestPubDate);
-      if (pubDate >= weekStart) monitorUpdates++;
+      if (pubDate >= weekStart && pubDate <= weekEnd) monitorUpdates++;
     }
   }
 
   // 3. 构建分析提示
-  const weekLabel = `${weekStart.getMonth() + 1}/${weekStart.getDate()} - ${today.getMonth() + 1}/${today.getDate()}`;
+  const weekLabel = `${weekStart.getMonth() + 1}/${weekStart.getDate()} - ${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
   const prompt = `请分析以下自律数据并给出本周总结和建议：
 
 📅 周期: ${weekLabel}
@@ -132,7 +136,7 @@ async function main() {
     level,
     monitorUpdates,
     aiAnalysis,
-    generatedAt: today.toISOString(),
+    generatedAt: weekEnd.toISOString(),
   };
 
   // 更新 user_data 中的 weeklyReport
