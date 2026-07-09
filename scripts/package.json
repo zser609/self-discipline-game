@@ -1,0 +1,9 @@
+﻿{
+  "name": "self-discipline-monitor",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "rss-parser": "^3.13.0"
+  }
+}
