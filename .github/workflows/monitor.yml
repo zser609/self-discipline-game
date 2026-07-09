@@ -1,4 +1,4 @@
-﻿name: Monitor Sources
+name: Monitor Sources
 
 on:
   schedule:
