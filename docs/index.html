@@ -314,6 +314,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   </div>
   <div id="today-modules"></div>
 <div id="monitor-feed" style="margin-top:12px;"></div>
+<div id="weekly-report" style="margin-top:12px;"></div>
 </div>
 <div class="tab-content" id="tab-calendar">
   <div class="card"><h2>📅 打卡热力图</h2><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">颜色深浅 = 当天任务完成率</div><div id="calendar-heatmap"></div></div>
@@ -364,7 +365,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="collapsible-section"><div class="collapsible-header" onclick="this.parentElement.classList.toggle('collapsed')" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:4px 0;margin-bottom:4px;"><span style="font-size:13px;font-weight:600;">📡 监测源列表</span><span class="monitor-count" style="font-size:11px;color:var(--text2);"></span><span class="arrow" style="font-size:10px;transition:transform .2s;">▼</span></div><div class="collapsible-body"><div id="settings-t4"></div>
   <div style="display:flex;gap:6px;margin-top:6px;">
     <button class="btn btn-primary btn-sm" onclick="openMonitorModal('reminder')">+ 更新提醒</button>
-    <button class="btn btn-outline btn-sm" onclick="openMonitorModal('summary')">+ 数据总结</button>
+    
   </div>
 </div></div></div>
 
@@ -383,7 +384,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 <script>
 const STORAGE_KEY='sdg_v3';
 const d=new Date();TODAY=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-const SUPABASE_URL='https://bzlucslrylejrjachotw.supabase.co';const SUPABASE_KEY='sb_publishable_TiIhdz1pcjN-WBUspVn4yg_mZVU_DR5';let sb=null;try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){}function syncFromCloud(){if(!sb)return;sb.from('user_data').select('data').eq('id',1).single().then(({data:row,error})=>{if(error||!row||!row.data)return;const cd=row.data;if(!cd.points&&cd.points!==0)return;if(cd.points>DATA.points||Object.keys(cd.signIns||{}).length>Object.keys(DATA.signIns||{}).length){DATA=cd;saveData();refreshAll();showToast('☁️ 已从云端同步数据')}}).catch(()=>{})}
+const SUPABASE_URL='https://bzlucslrylejrjachotw.supabase.co';const SUPABASE_KEY='sb_publishable_TiIhdz1pcjN-WBUspVn4yg_mZVU_DR5';let sb=null;try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){}function syncFromCloud(){if(!sb)return;sb.from('user_data').select('data').eq('id',1).single().then(({data:row,error})=>{if(error||!row||!row.data)return;const cd=row.data;if(!cd.points&&cd.points!==0)return;const hasNewReport=cd.weeklyReport&&(!DATA.weeklyReport||cd.weeklyReport.generatedAt>DATA.weeklyReport.generatedAt);if(cd.points>DATA.points||Object.keys(cd.signIns||{}).length>Object.keys(DATA.signIns||{}).length||hasNewReport){if(hasNewReport)DATA.weeklyReport=cd.weeklyReport;else DATA=cd;saveData();refreshAll();showToast('☁️ 已从云端同步数据')}}).catch(()=>{})}
 +'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const DEFAULT_CATS=[
   {id:'cat_body',name:'身体',icon:'💪',color:'#4ade80'},
@@ -412,7 +413,7 @@ function selectEmoji(emoji){if(emojiPickerTarget){const input=document.getElemen
 function closeEmojiPicker(event){if(event){const overlay=document.getElementById('emoji-picker-overlay');const picker=document.getElementById('emoji-picker');if(!overlay)return;let el=event.target;while(el){if(el===overlay&&(el===event.target||!picker||!picker.contains(event.target)))break;el=el.parentElement}if(!el)return}document.getElementById('emoji-picker-overlay').classList.remove('show');emojiPickerTarget=null}
 function getDefaultData(){return{signIns:{},points:0,tasks:[],goals:[],categories:JSON.parse(JSON.stringify(DEFAULT_CATS)),earnedAchievements:[],skillRoots:[]}}
 function loadData(){try{let d=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!d)d=getDefaultData();const def=getDefaultData();for(const k of Object.keys(def))if(!(k in d))d[k]=def[k];if(!d.categories||d.categories.length===0)d.categories=JSON.parse(JSON.stringify(DEFAULT_CATS));return d}catch(e){return getDefaultData()}}
-let _st=null;function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA));if(sb&&(DATA.tasks.length>0||Object.keys(DATA.signIns).length>0||DATA.points>0)){clearTimeout(_st);_st=setTimeout(async()=>{try{const{data:row}=await sb.from('user_data').select('data').eq('id',1).single();if(row?.data?.monitorResults)DATA.monitorResults=row.data.monitorResults}catch(e){}await sb.from('user_data').upsert({id:1,data:DATA,updated_at:new Date().toISOString()});console.log('☁️ Synced')},800)}}
+let _st=null;function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA));if(sb&&(DATA.tasks.length>0||Object.keys(DATA.signIns).length>0||DATA.points>0)){clearTimeout(_st);_st=setTimeout(async()=>{try{const{data:row}=await sb.from('user_data').select('data').eq('id',1).single();if(row?.data?.monitorResults)DATA.monitorResults=row.data.monitorResults;if(row?.data?.weeklyReport)DATA.weeklyReport=row.data.weeklyReport}catch(e){}await sb.from('user_data').upsert({id:1,data:DATA,updated_at:new Date().toISOString()});console.log('☁️ Synced')},800)}}
 let calendarYear=null,calendarMonth=null;let batchMode=false;let batchSelected=new Set();let DATA=loadData();let currentTab='today';
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function getLevel(){let lv=1;while(DATA.points>=xpFor(lv+1))lv++;return lv}
@@ -646,7 +647,7 @@ function refreshSkillTree(){
   initSkillGraph();
 }
 function renderSkillNode(){return''}
-function updateDebugBar(){var ds=document.getElementById("db-skills");var dg=document.getElementById("db-goals");var dt=document.getElementById("db-tasks");var dp=document.getElementById("db-points");if(ds)ds.textContent=(DATA.skillRoots||[]).length;if(dg)dg.textContent=(DATA.goals||[]).length;if(dt)dt.textContent=(DATA.tasks||[]).length;if(dp)dp.textContent=DATA.points||0;}function refreshAll(){refreshTopBar();refreshToday();refreshCalendar();refreshDashboard();refreshSkillTree();renderMonitorFeed();refreshGoals();refreshMerit();refreshSettings();updateDebugBar()}
+function updateDebugBar(){var ds=document.getElementById("db-skills");var dg=document.getElementById("db-goals");var dt=document.getElementById("db-tasks");var dp=document.getElementById("db-points");if(ds)ds.textContent=(DATA.skillRoots||[]).length;if(dg)dg.textContent=(DATA.goals||[]).length;if(dt)dt.textContent=(DATA.tasks||[]).length;if(dp)dp.textContent=DATA.points||0;}function refreshAll(){refreshTopBar();refreshToday();refreshCalendar();refreshDashboard();refreshSkillTree();renderMonitorFeed();renderWeeklyReport();refreshGoals();refreshMerit();refreshSettings();updateDebugBar()}
 function refreshTopBar(){const s=getStreak();const xp=getXpProgress();document.getElementById('streak-num').textContent=s;document.getElementById('pts-num').textContent=DATA.points;document.getElementById('lvl-num').textContent='Lv.'+xp.level;const xpRemain=xp.needed-xp.current;document.getElementById('xp-next').textContent=xp.pct>=100?'✨满级':'距Lv.'+(xp.level+1)+' '+xpRemain+'XP';const btn=document.getElementById('signin-btn');if(DATA.signIns[TODAY]){btn.textContent='✅ 已签到';btn.classList.add('done')}else{btn.textContent='✨ 签到';btn.classList.remove('done')}document.getElementById('xp-fill-top').style.width=xp.pct+'%';document.getElementById('xp-text-top').textContent='Lv.'+xp.level+' → Lv.'+(xp.level+1)+' ('+xp.current+'/'+xp.needed+' XP)'}
 function refreshToday(){applyPenalties();const container=document.getElementById('today-modules');const cats=DATA.categories||[];const allTasks=DATA.tasks.filter(t=>isTaskDueToday(t)&&t.type!=='monitor');const monitorTasks=DATA.tasks.filter(t=>t.type==='monitor');const totalDone=allTasks.filter(t=>t.completedToday).length;const totalAll=allTasks.length;document.getElementById('today-summary-text').textContent='已完成 '+totalDone+'/'+totalAll;if(cats.length===0){container.innerHTML='<div class="empty-state"><div class="icon">📂</div>请先在「设定任务」中添加分类</div>';return}let html='';for(const cat of cats){const catTasks=allTasks.filter(t=>t.categoryId===cat.id);const catMonitors=monitorTasks.filter(t=>t.categoryId===cat.id);if(catTasks.length===0&&catMonitors.length===0)continue;const catDone=catTasks.filter(t=>t.completedToday).length;const catTotal=catTasks.length;html+='<div class="cat-module" style="border-color:'+cat.color+'44;">';html+='<div class="cat-header" style="background:'+cat.color+'11;color:'+cat.color+';" onclick="this.parentElement.classList.toggle(\'collapsed\')">';html+='<span>'+escHtml(cat.icon)+' '+escHtml(cat.name)+'</span>';html+='<span class="cat-progress">'+catDone+'/'+catTotal+'</span>';html+='<span class="arrow">▼</span></div>';html+='<div class="cat-body">';for(const t of catTasks){const done=t.completedToday;const isNeg=t.type==='habit'&&t.category==='negative';let meta='';if(t.cycle==='weekly')meta='每周';else if(t.cycle==='custom')meta='每'+t.intervalDays+'天';else if(t.cycle==='deadline')meta='截止:'+t.deadlineDate;else meta='每日';if(isNeg)meta+=' · 需守住';let missInfo='';if(t.type==='flexible'){const m=t.consecutiveMisses||0;if(m>0)missInfo='<span class="miss-counter'+(m>=2?' danger':'')+'" style="margin-left:4px;">⚠ 连缺'+m+'次</span>'}let scoreHtml='';if(isNeg){scoreHtml='<span class="task-score pos">守住+'+t.reward+'</span><span class="task-score neg">破-'+t.penalty+'</span>'}else{scoreHtml='<span class="task-score pos">+'+t.reward+'</span>'}let parentInfo='';if(t.parentGoalId&&t.parentPhaseId){const goal=DATA.goals.find(g=>g.id===t.parentGoalId);if(goal){const ph=goal.phases.find(p=>p.id===t.parentPhaseId);if(ph)parentInfo=' <span style="font-size:10px;color:var(--text2);">· '+escHtml(goal.name)+' / '+escHtml(ph.name)+'</span>'}}const icon=isNeg?'🚫':'✅';const actLabel=done?'撤销':(isNeg?'守住了':'完成');const actCls=done?'btn-outline':(isNeg?'btn-success':'btn-success');html+='<div class="task-row'+(done?' done':'')+'" data-task-id="'+t.id+'"><span class="task-icon">'+icon+'</span><div class="task-info"><div class="task-name">'+escHtml(t.name)+parentInfo+'</div><div class="task-meta">'+meta+missInfo+'</div></div>'+scoreHtml+'<div class="task-act"><button class="btn '+actCls+' btn-xs" onclick="toggleTask(\''+t.id+'\')">'+actLabel+'</button></div></div>'}html+='</div></div>'}if(!html)html='<div class="empty-state"><div class="icon">🎉</div>今天没有待办任务</div>';container.innerHTML=html}
 function refreshCalendar(){
@@ -808,6 +809,29 @@ function renderDashboard(){
   el.innerHTML=h;
 }
 function refreshDashboard(){if(document.getElementById('dashboard-stats'))renderDashboard()}
+function renderWeeklyReport(){
+  const el=document.getElementById("weekly-report");
+  if(!el)return;
+  const report=DATA.weeklyReport;
+  if(!report||!report.weekLabel){el.innerHTML="";return}
+  const net=report.weekXpEarned-report.weekXpLost;
+  const netSign=net>=0?"+"+net:""+net;
+  const netColor=net>=0?"var(--success)":"var(--danger)";
+  let h='<div class="card" style="border-left:3px solid var(--warning)">';
+  h+='<h2 style="margin:0 0 8px 0;">📊 本周总结 <span style="font-size:12px;color:var(--text2);font-weight:400">'+report.weekLabel+'</span></h2>';
+  h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
+  h+='<div style="text-align:center;min-width:60px;"><div style="font-size:20px;font-weight:700;">'+report.weekSignCount+'</div><div style="font-size:11px;color:var(--text2);">签到</div></div>';
+  h+='<div style="text-align:center;min-width:60px;"><div style="font-size:20px;font-weight:700;">'+report.weekCompletions+'</div><div style="font-size:11px;color:var(--text2);">完成</div></div>';
+  h+='<div style="text-align:center;min-width:60px;"><div style="font-size:20px;font-weight:700;color:'+netColor+';">'+netSign+'</div><div style="font-size:11px;color:var(--text2);">积分</div></div>';
+  h+='<div style="text-align:center;min-width:60px;"><div style="font-size:20px;font-weight:700;">'+report.streak+'</div><div style="font-size:11px;color:var(--text2);">连签</div></div>';
+  h+='</div>';
+  if(report.aiAnalysis){
+    h+='<div style="background:var(--bg2);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--text2);">🤖 <span style="color:var(--warning);font-weight:600;">AI 本周分析</span><br>'+report.aiAnalysis.replace(/\n/g,"<br>")+'</div>';
+  }
+  h+='<div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right;">生成于 '+report.generatedAt?.substring(0,10)+'</div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
 function renderMonitorFeed(){
   const el=document.getElementById("monitor-feed");
   if(!el)return;
