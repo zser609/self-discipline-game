@@ -17,11 +17,14 @@ const TODAY = new Date().toISOString().split("T")[0];
 // ===== B站 API =====
 async function fetchBilibili(mid) {
   try {
-    const url = `https://api.bilibili.com/x/space/arc/search?mid=${mid}&ps=10&order=pubdate`;
+    // Add delay to avoid rate limiting
+    await new Promise(r=>setTimeout(r,2000));
+    const url = `https://api.bilibili.com/x/space/arc/search?mid=${mid}&ps=5&order=pubdate`;
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
         Referer: "https://www.bilibili.com/",
+        "Accept-Language": "zh-CN,zh;q=0.9",
       },
     });
     const json = await res.json();
@@ -65,7 +68,7 @@ async function fetchRSS(feedUrl) {
 
 // ===== 判断URL类型并抓取 =====
 async function fetchMonitor(monitor) {
-  const url = monitor.url || "";
+  const url = (monitor.url || "").trim();
   const name = monitor.name || "";
 
   // B站: URL包含 bilibili.com 或直接是UID数字
@@ -83,6 +86,11 @@ async function fetchMonitor(monitor) {
     return { monitor, items, type: "bilibili", sourceId: mid };
   }
 
+  // 跳过不支持的平台
+  if(url.includes("douyin.com")||url.includes("xiaohongshu.com")||url.includes("v.douyin.com")){
+    console.log("  ⚠ 抖音/小红书暂不支持自动监测，已跳过: "+name);
+    return null;
+  }
   // RSS/微信公众号: URL以http开头 (微信需通过RSSHub桥接: https://rsshub.app/wechat/mp/profile/MP_ID)
   if (url.startsWith("http")) {
     console.log(`[RSS] 检查 ${name} (${url})`);
