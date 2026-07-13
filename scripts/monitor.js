@@ -30,7 +30,7 @@ async function fetchBilibili(mid) {
   // 策略1: RSSHub (云端IP友好)
   try {
     console.log("  [策略1] RSSHub...");
-    const rssUrl = `https://rsshub.rss3.io/bilibili/user/video/${mid}`;
+    const rssUrl = `https://rsshub.app/bilibili/user/video/${mid}`;
     const feed = await rssParser.parseURL(rssUrl);
     if (feed.items && feed.items.length > 0) {
       console.log(`  RSSHub: ${feed.items.length} videos`);
@@ -55,7 +55,7 @@ async function fetchBilibili(mid) {
   // 策略2: RSSHub 备用域名
   try {
     console.log("  [策略2] RSSHub (alt)...");
-    const rssUrl = `https://rsshub.pseudoyu.com/bilibili/user/video/${mid}`;
+    const rssUrl = `https://rsshub.rss3.io/bilibili/user/video/${mid}`;
     const feed = await rssParser.parseURL(rssUrl);
     if (feed.items && feed.items.length > 0) {
       console.log(`  RSSHub-alt: ${feed.items.length} videos`);
