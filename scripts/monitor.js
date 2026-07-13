@@ -1,5 +1,6 @@
 ﻿import { createClient } from "@supabase/supabase-js";
 import RssParser from "rss-parser";
+import crypto from "crypto";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
@@ -11,26 +12,109 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 }
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-const rssParser = new RssParser({ timeout: 15000 });
+const rssParser = new RssParser({ timeout: 15000, headers: { "User-Agent": "Mozilla/5.0" } });
 
 const TODAY = new Date().toISOString().split("T")[0];
 
-// ===== B站 字幕抓取 =====
-async function fetchBilibiliSubtitle(bvid) {
-  try {
-    const infoUrl = `https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`;
-    const infoRes = await fetch(infoUrl, {
-      headers: { "User-Agent": "Mozilla/5.0", Referer: "https://www.bilibili.com/" }
-    });
-    const infoJson = await infoRes.json();
-    if (infoJson.code !== 0) return "";
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "Accept": "application/json, text/plain, */*",
+  "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+};
 
-    const subList = infoJson.data?.subtitle?.list || [];
-    if (subList.length === 0) {
-      console.log("    无字幕");
-      return "";
-    }
-    // 优先中文
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===== WBI 签名 =====
+const WBI_MIXIN_IDX = [46,47,18,2,53,8,23,32,15,50,10,31,58,3,45,35,27,43,5,49,33,9,42,19,29,28,14,39,12,38,41,13,37,48,7,16,24,55,40,61,26,17,0,1,60,51,30,4,22,25,54,21,56,59,6,63,57,62,11,36,20,52,44,34];
+let _wbiCache = null;
+
+async function getWbiKeys() {
+  if (_wbiCache) return _wbiCache;
+  try {
+    const res = await fetch("https://api.bilibili.com/x/web-interface/nav", {
+      headers: { ...BROWSER_HEADERS, Referer: "https://www.bilibili.com/" },
+    });
+    const json = await res.json();
+    const imgKey = json.data?.wbi_img?.img_url?.split("/").pop()?.split(".")[0] || "";
+    const subKey = json.data?.wbi_img?.sub_url?.split("/").pop()?.split(".")[0] || "";
+    if (!imgKey || !subKey) throw new Error("Failed to get wbi keys");
+    _wbiCache = { imgKey, subKey };
+    return _wbiCache;
+  } catch (e) {
+    console.error("  ⚠ 获取WBI keys失败:", e.message);
+    return null;
+  }
+}
+
+function signWbi(params, imgKey, subKey) {
+  let mixin = "";
+  for (const idx of WBI_MIXIN_IDX) {
+    if (idx < (imgKey + subKey).length) mixin += (imgKey + subKey)[idx];
+  }
+  const mixinKey = mixin.substring(0, 32);
+  const wts = Math.floor(Date.now() / 1000);
+  const allParams = { ...params, wts };
+  const sorted = Object.keys(allParams).sort();
+  const query = sorted.map(k => `${k}=${encodeURIComponent(allParams[k]).replace(/[!'()*]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase())}`).join("&");
+  const w_rid = crypto.createHash("md5").update(query + mixinKey).digest("hex");
+  return query + "&w_rid=" + w_rid;
+}
+
+// ===== B站 获取 =====
+async function fetchBilibili(mid) {
+  const keys = await getWbiKeys();
+  if (!keys) {
+    console.error("  ❌ 无法获取WBI密钥，跳过B站");
+    return [];
+  }
+
+  const qs = signWbi({ mid, ps: "5", order: "pubdate" }, keys.imgKey, keys.subKey);
+  const url = `https://api.bilibili.com/x/space/wbi/arc/search?${qs}`;
+
+  try {
+    await sleep(2000);
+    const res = await fetch(url, {
+      headers: { ...BROWSER_HEADERS, Referer: `https://space.bilibili.com/${mid}/` },
+    });
+    const text = await res.text();
+    if (!text.startsWith("{")) throw new Error("非JSON响应");
+    const json = JSON.parse(text);
+    if (json.code !== 0) throw new Error(`code=${json.code} msg=${json.message}`);
+    const vlist = json.data?.list?.vlist || [];
+    
+    console.log(`  ✅ 获取到 ${vlist.length} 个视频`);
+    return vlist.map((v) => ({
+      id: `bv_${v.bvid}`,
+      bvid: v.bvid,
+      title: v.title,
+      url: `https://www.bilibili.com/video/${v.bvid}`,
+      description: (v.description || "").substring(0, 300),
+      pubDate: new Date(v.created * 1000).toISOString(),
+      author: v.author,
+      source: "bilibili",
+    }));
+  } catch (e) {
+    console.error(`  ❌ B站 API 失败:`, e.message);
+    return [];
+  }
+}
+
+// ===== B站字幕 =====
+async function fetchBilibiliSubtitle(bvid) {
+  if (!bvid) return "";
+  try {
+    const keys = await getWbiKeys();
+    if (!keys) return "";
+    const qs = signWbi({ bvid }, keys.imgKey, keys.subKey);
+    const res = await fetch(`https://api.bilibili.com/x/web-interface/view?${qs}`, {
+      headers: { ...BROWSER_HEADERS, Referer: "https://www.bilibili.com/" },
+    });
+    const json = await res.json();
+    if (json.code !== 0) return "";
+
+    const subList = json.data?.subtitle?.list || [];
+    if (subList.length === 0) { console.log("    无字幕"); return ""; }
+    
     const zhSub = subList.find(s => s.lan === "zh-Hans" || s.lan === "zh-CN") || subList[0];
     const subUrl = zhSub.subtitle_url;
     if (!subUrl) return "";
@@ -38,95 +122,15 @@ async function fetchBilibiliSubtitle(bvid) {
     const subRes = await fetch(subUrl.startsWith("http") ? subUrl : "https:" + subUrl);
     const subJson = await subRes.json();
     const texts = (subJson.body || []).map(s => s.content).join(" ");
-    console.log(`    字幕长度: ${texts.length} 字符`);
-    return texts.substring(0, 6000); // 限制长度节约token
+    console.log(`    字幕: ${texts.length} 字符`);
+    return texts.substring(0, 6000);
   } catch (e) {
-    console.error("    字幕抓取失败:", e.message);
+    console.error("    字幕失败:", e.message);
     return "";
   }
 }
 
-// ===== DeepSeek AI 总结 =====
-async function summarizeWithDeepSeek(title, description, subtitle) {
-  if (!DEEPSEEK_KEY) {
-    console.log("    未配置DEEPSEEK_KEY，跳过AI总结");
-    return "";
-  }
-  try {
-    const content = [
-      `标题：${title}`,
-      `简介：${description || "无"}`,
-      `字幕片段：${subtitle || "无字幕"}`,
-    ].join("\n\n");
-
-    const res = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${DEEPSEEK_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          {
-            role: "system",
-            content: `你是一个知识提取助手。根据视频的标题、简介和字幕，提炼出3-5个核心知识点。用简洁的Markdown格式输出，每个知识点一行，格式：- **要点名称**：一句话解释。总字数不超过200字。不要问候语。`,
-          },
-          { role: "user", content },
-        ],
-        max_tokens: 400,
-        temperature: 0.3,
-      }),
-    });
-
-    const json = await res.json();
-    if (json.choices?.[0]?.message?.content) {
-      const summary = json.choices[0].message.content.trim();
-      console.log(`    AI总结: ${summary.substring(0, 80)}...`);
-      return summary;
-    }
-    console.error("    DeepSeek 返回异常:", JSON.stringify(json).substring(0, 200));
-    return "";
-  } catch (e) {
-    console.error("    DeepSeek 调用失败:", e.message);
-    return "";
-  }
-}
-
-// ===== B站 API =====
-async function fetchBilibili(mid) {
-  try {
-    await new Promise(r=>setTimeout(r,2000));
-    const url = `https://api.bilibili.com/x/space/arc/search?mid=${mid}&ps=5&order=pubdate`;
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-        Referer: "https://www.bilibili.com/",
-        "Accept-Language": "zh-CN,zh;q=0.9",
-      },
-    });
-    const json = await res.json();
-    if (json.code !== 0 || !json.data?.list?.vlist) {
-      console.error(`B站 fetch failed for mid=${mid}:`, json.message);
-      return [];
-    }
-    return json.data.list.vlist.map((v) => ({
-      id: `bv_${v.bvid}`,
-      bvid: v.bvid,
-      title: v.title,
-      url: `https://www.bilibili.com/video/${v.bvid}`,
-      description: v.description?.substring(0, 300) || "",
-      pubDate: new Date(v.created * 1000).toISOString(),
-      author: v.author,
-      source: "bilibili",
-    }));
-  } catch (e) {
-    console.error(`B站 error for mid=${mid}:`, e.message);
-    return [];
-  }
-}
-
-// ===== RSS =====
+// ===== RSS 获取 (博客/公众号) =====
 async function fetchRSS(feedUrl) {
   try {
     const feed = await rssParser.parseURL(feedUrl);
@@ -136,111 +140,153 @@ async function fetchRSS(feedUrl) {
       url: item.link,
       description: (item.contentSnippet || item.content || "").substring(0, 300),
       pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-      author: feed.title || "",
+      author: item.creator || feed.title || "",
       source: "rss",
     }));
   } catch (e) {
-    console.error(`RSS error for ${feedUrl}:`, e.message);
+    console.error(`  RSS 错误:`, e.message);
     return [];
   }
 }
 
-async function fetchMonitor(monitor) {
-  const url = (monitor.url || "").trim();
-  const name = monitor.name || "";
-
-  if (url.includes("bilibili.com") || /^\d+$/.test(url.trim())) {
-    let mid = url.trim();
-    const midMatch = url.match(/space\.bilibili\.com\/(\d+)/);
-    if (midMatch) mid = midMatch[1];
-    if (!/^\d+$/.test(mid)) { console.log(`无法解析B站UID: ${url}`); return null; }
-    console.log(`[B站] 检查 ${name} (mid=${mid})`);
-    const items = await fetchBilibili(mid);
-    return { monitor, items, type: "bilibili", sourceId: mid };
+// ===== DeepSeek AI 总结 =====
+async function summarizeWithDeepSeek(title, description, subtitle) {
+  if (!DEEPSEEK_KEY) return "";
+  try {
+    const content = [`标题：${title}`, `简介：${description || "无"}`, `字幕：${subtitle || "无字幕"}`].join("\n\n");
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${DEEPSEEK_KEY}` },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: "你是一个知识提取助手。根据视频的标题、简介和字幕，提炼出3-5个核心知识点。用简洁的Markdown格式输出，每个知识点一行，格式：- **要点名称**：一句话解释。总字数不超过200字。不要问候语。" },
+          { role: "user", content },
+        ],
+        max_tokens: 400, temperature: 0.3,
+      }),
+    });
+    const json = await res.json();
+    const summary = json.choices?.[0]?.message?.content?.trim();
+    if (summary) { console.log(`    🤖 AI: ${summary.substring(0, 80)}...`); return summary; }
+    return "";
+  } catch (e) {
+    console.error("    DeepSeek失败:", e.message);
+    return "";
   }
+}
 
-  if(url.includes("douyin.com")||url.includes("xiaohongshu.com")){
-    console.log("  ⚠ 抖音/小红书暂不支持，已跳过: "+name);
+// ===== 分类监测源 =====
+function classify(monitor) {
+  const url = (monitor.url || "").trim();
+  
+  // B站
+  if (url.includes("bilibili.com") || /^\d+$/.test(url)) {
+    let mid = url;
+    const m = url.match(/space\.bilibili\.com\/(\d+)/);
+    if (m) mid = m[1];
+    if (/^\d+$/.test(mid)) return { type: "bilibili", id: mid };
     return null;
   }
-  if (url.startsWith("http")) {
-    console.log(`[RSS] 检查 ${name} (${url})`);
-    const items = await fetchRSS(url);
-    return { monitor, items, type: "rss", sourceId: url };
-  }
-
-  console.log(`无法识别的源: ${url}`);
+  
+  // RSS: 博客、微信公众号RSSHub、通用RSS
+  if (url.startsWith("http")) return { type: "rss", id: url };
+  
   return null;
 }
 
 async function main() {
-  console.log("=== 监测任务启动:", new Date().toISOString(), "===");
+  console.log(`=== 监测启动 ${new Date().toLocaleString("zh-CN", {timeZone:"Asia/Shanghai"})} ===`);
 
   const { data: row, error } = await sb.from("user_data").select("data").eq("id", 1).single();
   if (error || !row?.data) { console.error("无法读取用户数据:", error); return; }
 
   const userData = row.data;
-  const monitors = (userData.tasks || []).filter(t => t.type === "monitor" && t.subType === "reminder" && t.url);
-  if (monitors.length === 0) { console.log("没有监测任务，跳过"); return; }
+  const allMonitors = (userData.tasks || []).filter(t => t.type === "monitor" && t.subType === "reminder" && t.url);
+  if (allMonitors.length === 0) { console.log("没有监测任务"); return; }
 
-  console.log(`共 ${monitors.length} 个监测源`);
+  const bilibiliList = [];
+  const rssList = [];
+  for (const m of allMonitors) {
+    const info = classify(m);
+    if (!info) { console.log(`  ⏭ 跳过: ${m.name}`); continue; }
+    if (info.type === "bilibili") bilibiliList.push({ monitor: m, id: info.id });
+    else rssList.push({ monitor: m, id: info.id });
+  }
+
+  console.log(`监测源: ${allMonitors.length} → B站:${bilibiliList.length} RSS:${rssList.length}`);
+
   if (!userData.monitorResults) userData.monitorResults = {};
-
   let newCount = 0;
 
-  for (const monitor of monitors) {
-    const result = await fetchMonitor(monitor);
-    if (!result) continue;
-    const { items, type } = result;
+  // B站
+  for (const { monitor, id } of bilibiliList) {
+    console.log(`[B站] ${monitor.name} (mid=${id})`);
+    const items = await fetchBilibili(id);
     if (items.length === 0) continue;
 
-    const lastResult = userData.monitorResults[monitor.id] || {};
-    const lastId = lastResult.lastContentId || "";
-    const latestItem = items[0];
-
-    if (latestItem.id !== lastId) {
+    const last = userData.monitorResults[monitor.id] || {};
+    if (items[0].id !== (last.lastContentId || "")) {
       newCount++;
+      console.log(`  🆕 ${items[0].title}`);
 
-      // ===== AI 总结：仅B站 =====
       let aiSummary = "";
-      if (type === "bilibili" && latestItem.bvid && DEEPSEEK_KEY) {
-        console.log(`   🤖 抓取字幕并AI总结...`);
-        const subtitle = await fetchBilibiliSubtitle(latestItem.bvid);
-        aiSummary = await summarizeWithDeepSeek(latestItem.title, latestItem.description, subtitle);
+      if (items[0].bvid && DEEPSEEK_KEY) {
+        const subtitle = await fetchBilibiliSubtitle(items[0].bvid);
+        aiSummary = await summarizeWithDeepSeek(items[0].title, items[0].description, subtitle);
       }
 
       userData.monitorResults[monitor.id] = {
-        monitorId: monitor.id,
-        monitorName: monitor.name,
-        lastContentId: latestItem.id,
-        lastChecked: TODAY,
-        latestTitle: latestItem.title,
-        latestUrl: latestItem.url,
-        latestPubDate: latestItem.pubDate,
-        updatedAt: new Date().toISOString(),
-        items: items.slice(0, 5),
-        aiSummary,
+        monitorId: monitor.id, monitorName: monitor.name,
+        lastContentId: items[0].id, lastChecked: TODAY,
+        latestTitle: items[0].title, latestUrl: items[0].url,
+        latestPubDate: items[0].pubDate, updatedAt: new Date().toISOString(),
+        items: items.slice(0, 5), aiSummary,
       };
-      console.log(`  ✅ 新内容: ${monitor.name} -> ${latestItem.title}`);
     } else {
-      userData.monitorResults[monitor.id] = { ...lastResult, lastChecked: TODAY };
-      console.log(`  ⏭ 无更新: ${monitor.name}`);
+      userData.monitorResults[monitor.id] = { ...last, lastChecked: TODAY };
+      console.log(`  ⏭ 无更新`);
+    }
+    await sleep(2000);
+  }
+
+  // RSS (博客/公众号)
+  for (const { monitor, id } of rssList) {
+    console.log(`[RSS] ${monitor.name}`);
+    const items = await fetchRSS(id);
+    if (items.length === 0) {
+      console.log(`  ⏭ 无内容或解析失败`);
+      continue;
     }
 
-    await new Promise(r => setTimeout(r, 1000));
+    const last = userData.monitorResults[monitor.id] || {};
+    if (items[0].id !== (last.lastContentId || "")) {
+      newCount++;
+      console.log(`  🆕 ${items[0].title}`);
+      userData.monitorResults[monitor.id] = {
+        monitorId: monitor.id, monitorName: monitor.name,
+        lastContentId: items[0].id, lastChecked: TODAY,
+        latestTitle: items[0].title, latestUrl: items[0].url,
+        latestPubDate: items[0].pubDate, updatedAt: new Date().toISOString(),
+        items: items.slice(0, 5), aiSummary: "",
+      };
+    } else {
+      userData.monitorResults[monitor.id] = { ...last, lastChecked: TODAY };
+      console.log(`  ⏭ 无更新`);
+    }
+    await sleep(1000);
   }
 
   if (newCount > 0) {
     const { error: writeErr } = await sb.from("user_data").upsert({
       id: 1, data: userData, updated_at: new Date().toISOString(),
     });
-    if (writeErr) { console.error("写入失败:", writeErr); }
-    else { console.log(`✅ 已同步: ${newCount} 个源有更新`); }
+    if (writeErr) console.error("写入失败:", writeErr);
+    else console.log(`✅ 同步完成: ${newCount} 个源有更新`);
   } else {
     console.log("所有源均无更新");
   }
-
   console.log("=== 监测完成 ===");
 }
 
-main().catch((e) => { console.error("监测脚本异常:", e); process.exit(1); });
+main().catch((e) => { console.error("异常:", e); process.exit(1); });
