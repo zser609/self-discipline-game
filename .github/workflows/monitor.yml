@@ -1,6 +1,10 @@
-name: Monitor Sources
+﻿name: Monitor Sources
 
 on:
+  push:
+    paths:
+      - scripts/monitor.js
+      - .github/workflows/monitor.yml
   schedule:
     - cron: "0 */4 * * *"
   workflow_dispatch:
